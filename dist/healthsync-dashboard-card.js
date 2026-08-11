@@ -1,9 +1,9 @@
-/* HealthSync Dashboard Card v0.1.1
+/* HealthSync Dashboard Card v0.1.2
  * A dependency-free Lovelace card for mannotfood/healthsync.
  * MIT License
  */
 
-const HS_VERSION = "0.1.1";
+const HS_VERSION = "0.1.2";
 const HS_METRICS = [
   "last_sync", "steps", "active_calories", "heart_rate",
   "heart_rate_variability", "sleep_duration", "sleep_onset", "sleep_wake",
@@ -354,6 +354,7 @@ class HealthSyncDashboardCard extends HTMLElement {
       .chart-toggle[aria-expanded="true"] .chart-chevron { transform:rotate(180deg); }
       .chart-body { margin-top:6px; }
       .chart-body[hidden] { display:none; }
+      .chart-body-legend { display:flex; justify-content:flex-end; margin-bottom:4px; }
       .legend { display:flex; gap:10px; flex-wrap:wrap; color:var(--secondary-text-color); font-size:12px; font-weight:500; }
       .legend i { display:inline-block; width:8px; height:8px; margin-right:4px; border-radius:50%; background:var(--dot); }
       svg { display:block; width:100%; height:auto; overflow:visible; }
@@ -455,14 +456,14 @@ class HealthSyncDashboardCard extends HTMLElement {
     this._render();
   }
 
-  _collapsibleChart(kind, title, legend, svg, wide = false) {
+  _collapsibleChart(kind, title, legend, svg, wide = false, legendInBody = false) {
     const expanded = this._expandedChart === kind;
     const action = this._t("switchChart");
     return `<section class="chart collapsible${wide ? " wide" : ""}">
       <button type="button" class="chart-title chart-toggle" data-chart-toggle="${kind}" aria-expanded="${expanded}" aria-label="${this._escape(`${action}: ${title}`)}">
-        <span class="chart-heading"><span>${title}</span><ha-icon class="chart-chevron" icon="mdi:chevron-down"></ha-icon></span>${legend}
+        <span class="chart-heading"><span>${title}</span><ha-icon class="chart-chevron" icon="mdi:chevron-down"></ha-icon></span>${legendInBody ? "" : legend}
       </button>
-      <div class="chart-body"${expanded ? "" : " hidden"}>${svg}</div>
+      <div class="chart-body"${expanded ? "" : " hidden"}>${legendInBody ? `<div class="chart-body-legend">${legend}</div>` : ""}${svg}</div>
     </section>`;
   }
 
@@ -575,7 +576,7 @@ class HealthSyncDashboardCard extends HTMLElement {
     deep.forEach((_,i)=>{ let y=top+plotH; [deep[i],core[i],rem[i],awake[i]].forEach((item,j)=>{ const h=(item.has?item.value:0)/max*plotH; y-=h; bars+=`<rect x="${left+i*slot+slot*.2}" y="${y}" width="${slot*.6}" height="${Math.max(0,h)}" rx="${j===3?3:0}" fill="${colors[j]}"><title>${item.value.toFixed(1)} h</title></rect>`; }); });
     const legend=`<span class="legend"><span><i style="--dot:${colors[0]}"></i>${this._t("deep")}</span><span><i style="--dot:${colors[1]}"></i>${this._t("core")}</span><span><i style="--dot:${colors[2]}"></i>${this._t("rem")}</span><span><i style="--dot:${colors[3]}"></i>${this._t("awake")}</span></span>`;
     const svg=`<svg viewBox="0 0 ${width} ${height}" role="img" data-chart="sleep">${this._grid(width,height,left,right,top,bottom,max)}${bars}${this._dayLabels(deep,width,height,left,right)}</svg>`;
-    return this._collapsibleChart("sleep",this._historyTitle("sleep"),legend,svg);
+    return this._collapsibleChart("sleep",this._historyTitle("sleep"),legend,svg,false,true);
   }
 
   _heartChart() {

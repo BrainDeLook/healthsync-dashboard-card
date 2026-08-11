@@ -2,7 +2,7 @@
 
 # HealthSync Dashboard Card
 
-![Демонстрация HealthSync Dashboard Card](images/preview.svg)
+![Демонстрация HealthSync Dashboard Card](images/preview.png)
 
 Компактная адаптивная карточка Home Assistant для
 [интеграции HealthSync](https://github.com/mannotfood/healthsync). Карточка использует
