@@ -7,6 +7,7 @@ calorie_goal: 600
 show_activity: true
 show_sleep: true
 show_heart_rate: true
+show_workouts_tab: true
 
 # Сущности стандартной установки HealthSync определяются автоматически.
 # При переименовании их можно указать вручную:
@@ -19,3 +20,8 @@ show_heart_rate: true
 #   sleep_onset: sensor.healthsync_fell_asleep
 #   sleep_wake: sensor.healthsync_woke_up
 #   last_sync: sensor.healthsync_last_sync
+#   last_workout_type: sensor.healthsync_workouts_last_workout_type
+#   last_workout_duration: sensor.healthsync_workouts_last_workout_duration
+#   last_workout_distance: sensor.healthsync_workouts_last_workout_distance
+#   last_workout_calories: sensor.healthsync_workouts_last_workout_calories
+#   recent_workouts: sensor.healthsync_workouts_recent_workouts

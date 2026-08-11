@@ -42,6 +42,14 @@ const healthsyncStates = {
   "sensor.healthsync_fell_asleep": { state: "23:41", last_updated: new Date().toISOString(), attributes: { timestamp: "2026-08-10T23:41:00+03:00" } },
   "sensor.healthsync_woke_up": { state: "07:12", last_updated: new Date().toISOString(), attributes: { timestamp: "2026-08-11T07:12:00+03:00" } },
   "sensor.healthsync_last_sync": { state: new Date().toISOString(), last_updated: new Date().toISOString(), attributes: {} },
+  "sensor.healthsync_workouts_last_workout_type": { state: "running", last_updated: new Date().toISOString(), attributes: { started_at: "2026-08-11T07:30:00+03:00", ended_at: "2026-08-11T08:12:00+03:00" } },
+  "sensor.healthsync_workouts_last_workout_duration": { state: "42", last_updated: new Date().toISOString(), attributes: { unit_of_measurement: "min" } },
+  "sensor.healthsync_workouts_last_workout_distance": { state: "6400", last_updated: new Date().toISOString(), attributes: { unit_of_measurement: "m" } },
+  "sensor.healthsync_workouts_last_workout_calories": { state: "486", last_updated: new Date().toISOString(), attributes: { unit_of_measurement: "kcal" } },
+  "sensor.healthsync_workouts_recent_workouts": { state: "2", last_updated: new Date().toISOString(), attributes: { workouts: [
+    { workout_type: "running", started_at: "2026-08-11T07:30:00+03:00", ended_at: "2026-08-11T08:12:00+03:00", duration_min: 42, distance_m: 6400, calories: 486 },
+    { workout_type: "strength_training", started_at: "2026-08-09T18:00:00+03:00", ended_at: "2026-08-09T18:35:00+03:00", duration_min: 35, distance_m: null, calories: 240 },
+  ] } },
 };
 
 assert.deepEqual(Card.discoverEntities({ states: healthsyncStates }), {
@@ -53,6 +61,11 @@ assert.deepEqual(Card.discoverEntities({ states: healthsyncStates }), {
   sleep_duration: "sensor.healthsync_sleep_last_night",
   sleep_onset: "sensor.healthsync_fell_asleep",
   sleep_wake: "sensor.healthsync_woke_up",
+  last_workout_type: "sensor.healthsync_workouts_last_workout_type",
+  last_workout_duration: "sensor.healthsync_workouts_last_workout_duration",
+  last_workout_distance: "sensor.healthsync_workouts_last_workout_distance",
+  last_workout_calories: "sensor.healthsync_workouts_last_workout_calories",
+  recent_workouts: "sensor.healthsync_workouts_recent_workouts",
 });
 
 const form = Card.getConfigForm();
@@ -61,12 +74,16 @@ assert.ok(entityPanel);
 assert.deepEqual(entityPanel.schema.map((field) => field.name), [
   "last_sync", "steps", "active_calories", "heart_rate",
   "heart_rate_variability", "sleep_duration", "sleep_onset", "sleep_wake",
+  "last_workout_type", "last_workout_duration", "last_workout_distance",
+  "last_workout_calories", "recent_workouts",
 ]);
 const tilePanel = form.schema.find((field) => field.icon === "mdi:view-grid-outline");
 assert.ok(tilePanel, "the editor should expose individual metric tile switches");
 assert.ok(tilePanel.schema.some((field) => field.name === "show_steps_metric"));
 assert.ok(tilePanel.schema.some((field) => field.name === "show_hrv_metric"));
 assert.ok(tilePanel.schema.some((field) => field.name === "show_sleep_wake_metric"));
+const sectionPanel = form.schema.find((field) => field.icon === "mdi:view-dashboard-outline");
+assert.ok(sectionPanel.schema.some((field) => field.name === "show_workouts_tab"));
 
 globalThis.document = {
   createElement(name) {
@@ -78,7 +95,7 @@ globalThis.document = {
 const editor = Card.getConfigElement();
 editor.setConfig({ type: "custom:healthsync-dashboard-card", entities: {} });
 editor.hass = { language: "en", states: healthsyncStates };
-assert.match(editor.shadowRoot.innerHTML, /Automatically discovered 8 HealthSync entities/);
+assert.match(editor.shadowRoot.innerHTML, /Automatically discovered 13 HealthSync entities/);
 assert.equal(editor._form.schema[0].name, "title");
 
 const card = new Card();
@@ -95,12 +112,25 @@ assert.match(card.shadowRoot.innerHTML, /data-chart-toggle="sleep" aria-expanded
 assert.match(card.shadowRoot.innerHTML, /data-chart-toggle="sleep"[\s\S]*?<\/button>\s*<div class="chart-body" hidden><div class="chart-body-legend"><span class="legend">/);
 assert.match(card.shadowRoot.innerHTML, /data-chart-toggle="heart" aria-expanded="false"/);
 assert.match(card.shadowRoot.innerHTML, /data-chart="sleep"/);
+assert.match(card.shadowRoot.innerHTML, /data-tab="workouts"/);
+assert.match(card.shadowRoot.innerHTML, /class="chart collapsible sleep"/);
+assert.match(card.shadowRoot.innerHTML, /\.chart\.sleep \.chart-toggle \.legend \{ display:none!important; \}/);
 assert.match(card.shadowRoot.innerHTML, /Sleep stages · 3 days/);
 assert.match(card.shadowRoot.innerHTML, />1\.5 h<\/title>/);
 assert.match(card.shadowRoot.innerHTML, />4\.3 h<\/title>/);
 assert.match(card.shadowRoot.innerHTML, />1\.5 h<\/title>/);
 assert.match(card.shadowRoot.innerHTML, />0\.3 h<\/title>/);
 assert.doesNotMatch(card.shadowRoot.innerHTML, /(?:NaN|Infinity)/);
+
+card._switchTab("workouts");
+assert.match(card.shadowRoot.innerHTML, /aria-selected="true">Workouts/);
+assert.match(card.shadowRoot.innerHTML, /Latest workout/);
+assert.match(card.shadowRoot.innerHTML, /Running/);
+assert.match(card.shadowRoot.innerHTML, /6\.4 <small>km<\/small>/);
+assert.match(card.shadowRoot.innerHTML, /Strength training/);
+assert.match(card.shadowRoot.innerHTML, /42 min/);
+assert.doesNotMatch(card.shadowRoot.innerHTML, /0 m/);
+card._switchTab("overview");
 
 card._toggleChart("sleep");
 assert.match(card.shadowRoot.innerHTML, /data-chart-toggle="activity" aria-expanded="false"/);
@@ -133,6 +163,9 @@ assert.doesNotMatch(card.shadowRoot.innerHTML, /data-entity="sensor\.healthsync_
 assert.doesNotMatch(card.shadowRoot.innerHTML, /data-entity="sensor\.healthsync_woke_up"/);
 assert.match(card.shadowRoot.innerHTML, /data-entity="sensor\.healthsync_active_calories_today"/);
 assert.match(card.shadowRoot.innerHTML, /data-chart-toggle="activity"/);
+
+card.setConfig({ language: "en", show_workouts_tab: false });
+assert.doesNotMatch(card.shadowRoot.innerHTML, /data-tab="workouts"/);
 
 let historyPath = "";
 card._hass.callApi = async (_method, path) => {

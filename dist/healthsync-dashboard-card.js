@@ -1,12 +1,14 @@
-/* HealthSync Dashboard Card v0.1.2
+/* HealthSync Dashboard Card v0.2.0
  * A dependency-free Lovelace card for mannotfood/healthsync.
  * MIT License
  */
 
-const HS_VERSION = "0.1.2";
+const HS_VERSION = "0.2.0";
 const HS_METRICS = [
   "last_sync", "steps", "active_calories", "heart_rate",
   "heart_rate_variability", "sleep_duration", "sleep_onset", "sleep_wake",
+  "last_workout_type", "last_workout_duration", "last_workout_distance",
+  "last_workout_calories", "recent_workouts",
 ];
 const HS_ENTITY_CANDIDATES = {
   last_sync: ["sensor.healthsync_last_sync"],
@@ -17,6 +19,11 @@ const HS_ENTITY_CANDIDATES = {
   sleep_duration: ["sensor.healthsync_sleep_last_night"],
   sleep_onset: ["sensor.healthsync_fell_asleep"],
   sleep_wake: ["sensor.healthsync_woke_up"],
+  last_workout_type: ["sensor.healthsync_last_workout_type", "sensor.healthsync_workouts_last_workout_type"],
+  last_workout_duration: ["sensor.healthsync_last_workout_duration", "sensor.healthsync_workouts_last_workout_duration"],
+  last_workout_distance: ["sensor.healthsync_last_workout_distance", "sensor.healthsync_workouts_last_workout_distance"],
+  last_workout_calories: ["sensor.healthsync_last_workout_calories", "sensor.healthsync_workouts_last_workout_calories"],
+  recent_workouts: ["sensor.healthsync_recent_workouts", "sensor.healthsync_workouts_recent_workouts"],
 };
 const HS_ENTITY_SUFFIXES = {
   last_sync: ["healthsync_last_sync", "last_sync"],
@@ -27,6 +34,11 @@ const HS_ENTITY_SUFFIXES = {
   sleep_duration: ["healthsync_sleep_last_night", "sleep_last_night"],
   sleep_onset: ["healthsync_fell_asleep", "fell_asleep"],
   sleep_wake: ["healthsync_woke_up", "woke_up"],
+  last_workout_type: ["healthsync_last_workout_type", "healthsync_workouts_last_workout_type", "last_workout_type"],
+  last_workout_duration: ["healthsync_last_workout_duration", "healthsync_workouts_last_workout_duration", "last_workout_duration"],
+  last_workout_distance: ["healthsync_last_workout_distance", "healthsync_workouts_last_workout_distance", "last_workout_distance"],
+  last_workout_calories: ["healthsync_last_workout_calories", "healthsync_workouts_last_workout_calories", "last_workout_calories"],
+  recent_workouts: ["healthsync_recent_workouts", "healthsync_workouts_recent_workouts", "recent_workouts"],
 };
 
 const HS_TRANSLATIONS = {
@@ -38,6 +50,10 @@ const HS_TRANSLATIONS = {
     deep: "Deep", core: "Core", rem: "REM", awake: "Awake",
     heartRate: "Heart rate", hrv: "HRV", fellAsleep: "Fell asleep", wokeUp: "Woke up", today: "Today",
     switchChart: "Switch chart",
+    overviewTab: "Overview", workoutsTab: "Workouts", latestWorkout: "Latest workout",
+    workoutDuration: "Duration", workoutDistance: "Distance", workoutCalories: "Calories",
+    recentWorkouts: "Recent workouts", noWorkouts: "No workouts received yet",
+    started: "Started", showWorkout: "Open workout entity",
     historyUnavailable: "History is unavailable. Current values will keep working.", source: "HealthSync", received: "Received",
   },
   ru: {
@@ -48,6 +64,10 @@ const HS_TRANSLATIONS = {
     deep: "Глубокий", core: "Основной", rem: "REM", awake: "Бодрствование",
     heartRate: "Пульс", hrv: "HRV", fellAsleep: "Засыпание", wokeUp: "Пробуждение", today: "Сегодня",
     switchChart: "Переключить график",
+    overviewTab: "Обзор", workoutsTab: "Тренировки", latestWorkout: "Последняя тренировка",
+    workoutDuration: "Длительность", workoutDistance: "Дистанция", workoutCalories: "Калории",
+    recentWorkouts: "Недавние тренировки", noWorkouts: "Тренировки пока не получены",
+    started: "Начало", showWorkout: "Открыть сущность тренировки",
     historyUnavailable: "История недоступна. Текущие значения продолжат работать.", source: "HealthSync", received: "Получено",
   },
 };
@@ -58,24 +78,32 @@ const HS_EDITOR_LABELS = {
     days: "History period", step_goal: "Daily step goal", calorie_goal: "Daily active calorie goal",
     show_activity: "Show activity chart", show_sleep: "Show sleep chart",
     show_heart_rate: "Show heart-rate chart",
+    show_workouts_tab: "Show workouts tab",
     show_steps_metric: "Steps", show_calories_metric: "Active calories",
     show_sleep_metric: "Sleep", show_heart_metric: "Heart rate", show_hrv_metric: "HRV",
     show_sleep_onset_metric: "Fell asleep", show_sleep_wake_metric: "Woke up",
     last_sync: "Last synchronization", steps: "Steps", active_calories: "Active calories",
     sleep_duration: "Sleep last night", sleep_onset: "Fell asleep", sleep_wake: "Woke up",
     heart_rate: "Heart rate", heart_rate_variability: "Heart-rate variability",
+    last_workout_type: "Last workout type", last_workout_duration: "Last workout duration",
+    last_workout_distance: "Last workout distance", last_workout_calories: "Last workout calories",
+    recent_workouts: "Recent workouts",
   },
   ru: {
     title: "Заголовок", language: "Язык",
     days: "Период истории", step_goal: "Дневная цель шагов", calorie_goal: "Дневная цель активных калорий",
     show_activity: "Показывать график активности", show_sleep: "Показывать график сна",
     show_heart_rate: "Показывать график пульса",
+    show_workouts_tab: "Показывать вкладку тренировок",
     show_steps_metric: "Шаги", show_calories_metric: "Активные калории",
     show_sleep_metric: "Сон", show_heart_metric: "Пульс", show_hrv_metric: "HRV",
     show_sleep_onset_metric: "Засыпание", show_sleep_wake_metric: "Пробуждение",
     last_sync: "Последняя синхронизация", steps: "Шаги", active_calories: "Активные калории",
     sleep_duration: "Сон прошлой ночью", sleep_onset: "Засыпание", sleep_wake: "Пробуждение",
     heart_rate: "Пульс", heart_rate_variability: "Вариабельность пульса",
+    last_workout_type: "Тип последней тренировки", last_workout_duration: "Длительность последней тренировки",
+    last_workout_distance: "Дистанция последней тренировки", last_workout_calories: "Калории последней тренировки",
+    recent_workouts: "Недавние тренировки",
   },
 };
 
@@ -93,6 +121,7 @@ class HealthSyncDashboardCard extends HTMLElement {
     this._liveHeartHistory = [];
     this._expandedChart = null;
     this._chartStateKey = "";
+    this._activeTab = "overview";
   }
 
   setConfig(config) {
@@ -103,6 +132,7 @@ class HealthSyncDashboardCard extends HTMLElement {
       show_activity: true,
       show_sleep: true,
       show_heart_rate: true,
+      show_workouts_tab: true,
       show_steps_metric: true,
       show_calories_metric: true,
       show_sleep_metric: true,
@@ -139,6 +169,7 @@ class HealthSyncDashboardCard extends HTMLElement {
       title: "HealthSync", language: "auto", days: 7,
       step_goal: 10000, calorie_goal: 600,
       show_activity: true, show_sleep: true, show_heart_rate: true,
+      show_workouts_tab: true,
       show_steps_metric: true, show_calories_metric: true, show_sleep_metric: true,
       show_heart_metric: true, show_hrv_metric: true,
       show_sleep_onset_metric: true, show_sleep_wake_metric: true,
@@ -196,6 +227,7 @@ class HealthSyncDashboardCard extends HTMLElement {
             { name: "show_activity", default: true, selector: { boolean: {} } },
             { name: "show_sleep", default: true, selector: { boolean: {} } },
             { name: "show_heart_rate", default: true, selector: { boolean: {} } },
+            { name: "show_workouts_tab", default: true, selector: { boolean: {} } },
           ],
         },
         {
@@ -288,7 +320,7 @@ class HealthSyncDashboardCard extends HTMLElement {
     let value = Number(state.state);
     let unit = state.attributes.unit_of_measurement || "";
     if (!Number.isFinite(value)) return this._escape(state.state);
-    if (metric === "distance" && unit === "m" && value >= 1000) {
+    if (["distance", "last_workout_distance"].includes(metric) && unit === "m" && value >= 1000) {
       value /= 1000; unit = "km";
     }
     const maximumFractionDigits = Math.abs(value) >= 100 ? 0 : Math.abs(value) >= 10 ? 1 : 2;
@@ -325,6 +357,10 @@ class HealthSyncDashboardCard extends HTMLElement {
       .eyebrow { display:flex; gap:7px; align-items:center; margin-top:5px; color:var(--secondary-text-color); font-size:12px; }
       .sync-dot { width:7px; height:7px; border-radius:50%; background:#4caf72; box-shadow:0 0 0 4px color-mix(in srgb,#4caf72 16%,transparent); }
       .user-chip { padding:6px 9px; border-radius:999px; background:var(--secondary-background-color); color:var(--secondary-text-color); font-size:11px; white-space:nowrap; }
+      .tabs { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:4px; margin:-2px 0 12px; padding:4px; border-radius:12px; background:var(--secondary-background-color); }
+      .tab { appearance:none; border:0; border-radius:9px; padding:8px 10px; background:transparent; color:var(--secondary-text-color); font:inherit; font-size:12px; font-weight:700; cursor:pointer; }
+      .tab[aria-selected="true"] { background:var(--ha-card-background,var(--card-background-color)); color:var(--primary-text-color); box-shadow:0 1px 4px rgba(0,0,0,.22); }
+      .tab:focus-visible { outline:2px solid var(--primary-color); outline-offset:1px; }
       .metrics { display:grid; grid-template-columns:repeat(auto-fit,minmax(132px,1fr)); gap:8px; }
       .metric { appearance:none; border:1px solid var(--divider-color); border-radius:13px; min-height:70px; padding:10px; background:color-mix(in srgb,var(--card-background-color) 94%,var(--hb-color)); color:var(--primary-text-color); display:flex; align-items:center; gap:9px; text-align:left; cursor:pointer; font:inherit; transition:transform .15s ease,border-color .15s ease; }
       .metric:hover { transform:translateY(-1px); border-color:color-mix(in srgb,var(--hb-color) 50%,var(--divider-color)); }
@@ -343,6 +379,25 @@ class HealthSyncDashboardCard extends HTMLElement {
       .workout ha-icon { color:var(--hb-orange); margin-top:1px; }
       .workout strong { display:block; font-size:12px; margin-bottom:3px; }
       .workout span { color:var(--secondary-text-color); font-size:13px; }
+      .workout-latest { appearance:none; display:block; width:100%; padding:13px; border:1px solid var(--divider-color); border-radius:13px; background:color-mix(in srgb,var(--card-background-color) 94%,var(--hb-orange)); color:inherit; font:inherit; text-align:left; cursor:pointer; }
+      .workout-latest:hover { border-color:color-mix(in srgb,var(--hb-orange) 50%,var(--divider-color)); }
+      .workout-head { display:flex; align-items:center; gap:10px; }
+      .workout-head ha-icon { width:34px; height:34px; flex:0 0 34px; padding:7px; border-radius:10px; color:var(--hb-orange); background:color-mix(in srgb,var(--hb-orange) 14%,transparent); }
+      .workout-kicker { color:var(--secondary-text-color); font-size:11px; }
+      .workout-name { margin-top:2px; font-size:17px; font-weight:750; text-transform:capitalize; }
+      .workout-time { margin-left:auto; color:var(--secondary-text-color); font-size:11px; text-align:right; }
+      .workout-stats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; margin-top:11px; }
+      .workout-stat { min-width:0; padding:9px; border-radius:10px; background:var(--secondary-background-color); }
+      .workout-stat strong { display:block; overflow:hidden; color:var(--primary-text-color); font-size:15px; text-overflow:ellipsis; white-space:nowrap; }
+      .workout-stat span { display:block; margin-top:3px; color:var(--secondary-text-color); font-size:10px; }
+      .workout-list-title { margin:14px 2px 7px; font-size:13px; font-weight:750; }
+      .workout-list { display:grid; gap:7px; }
+      .workout-row { appearance:none; width:100%; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:center; padding:10px 11px; border:1px solid var(--divider-color); border-radius:11px; background:transparent; color:inherit; font:inherit; text-align:left; cursor:pointer; }
+      .workout-row:hover { border-color:color-mix(in srgb,var(--hb-orange) 50%,var(--divider-color)); }
+      .workout-row strong { display:block; font-size:13px; text-transform:capitalize; }
+      .workout-row small { display:block; margin-top:3px; color:var(--secondary-text-color); font-size:10px; }
+      .workout-row-meta { color:var(--secondary-text-color); font-size:11px; text-align:right; white-space:nowrap; }
+      .workout-empty { padding:34px 12px; color:var(--secondary-text-color); text-align:center; }
       .charts { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr)); gap:10px; margin-top:12px; }
       .chart { min-width:0; border:1px solid var(--divider-color); border-radius:13px; padding:11px; }
       .chart.wide { grid-column:1/-1; }
@@ -353,8 +408,9 @@ class HealthSyncDashboardCard extends HTMLElement {
       .chart-chevron { width:18px; height:18px; flex:0 0 18px; color:var(--secondary-text-color); transition:transform .2s ease; }
       .chart-toggle[aria-expanded="true"] .chart-chevron { transform:rotate(180deg); }
       .chart-body { margin-top:6px; }
-      .chart-body[hidden] { display:none; }
+      .chart-body[hidden],.chart-body[hidden] * { display:none!important; }
       .chart-body-legend { display:flex; justify-content:flex-end; margin-bottom:4px; }
+      .chart.sleep .chart-toggle .legend { display:none!important; }
       .legend { display:flex; gap:10px; flex-wrap:wrap; color:var(--secondary-text-color); font-size:12px; font-weight:500; }
       .legend i { display:inline-block; width:8px; height:8px; margin-right:4px; border-radius:50%; background:var(--dot); }
       svg { display:block; width:100%; height:auto; overflow:visible; }
@@ -373,7 +429,7 @@ class HealthSyncDashboardCard extends HTMLElement {
       .empty p,.history-error { color:var(--secondary-text-color); font-size:12px; }
       .history-error { margin-top:12px; text-align:center; }
       @container (max-width:600px) { .charts{grid-template-columns:1fr}.chart.wide{grid-column:auto} }
-      @container (max-width:430px) { ha-card{padding:12px}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.user-chip{display:none}.metric{min-height:66px;padding:9px}.chart{padding:10px} }
+      @container (max-width:430px) { ha-card{padding:12px}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.user-chip{display:none}.metric{min-height:66px;padding:9px}.chart{padding:10px}.workout-stats{grid-template-columns:1fr}.workout-time{display:none} }
       @container (max-width:300px) { .metrics{grid-template-columns:1fr}.header{display:block} }
     </style>`;
   }
@@ -385,6 +441,9 @@ class HealthSyncDashboardCard extends HTMLElement {
       this.shadowRoot.innerHTML = `${this._styles()}<ha-card><div class="empty"><ha-icon icon="mdi:heart-pulse"></ha-icon><h2>${this._t("noData")}</h2><p>${this._t("noDataHint")}</p></div></ha-card>`;
       return;
     }
+    const hasWorkoutData = ["last_workout_type", "last_workout_duration", "last_workout_distance", "last_workout_calories", "recent_workouts"].some((metric) => this._state(metric));
+    const showWorkoutTab = this.config.show_workouts_tab && hasWorkoutData;
+    if (!showWorkoutTab && this._activeTab === "workouts") this._activeTab = "overview";
     const sync = this._state("last_sync")?.state;
     const stepValue = this._numeric("steps") || 0;
     const goal = Math.max(1, Number(this.config.step_goal) || 10000);
@@ -407,14 +466,22 @@ class HealthSyncDashboardCard extends HTMLElement {
       hasSleepChart ? this._sleepChart() : "",
       hasHeartChart ? this._heartChart() : "",
     ].filter(Boolean).join("");
-    this.shadowRoot.innerHTML = `${this._styles()}<ha-card>
-      <div class="header"><div><h1>${this._escape(this.config.title || this._t("title"))}</h1>
-        ${sync && !["unknown","unavailable"].includes(sync) ? `<div class="eyebrow"><i class="sync-dot"></i>${this._t("synced")}: ${this._escape(this._relativeDate(sync))}</div>` : ""}
-      </div><div class="user-chip">${this._t("source")}</div></div>
+    const tabs = showWorkoutTab ? `<div class="tabs" role="tablist" aria-label="${this._escape(this._t("title"))}">
+      <button type="button" class="tab" role="tab" data-tab="overview" aria-selected="${this._activeTab === "overview"}">${this._t("overviewTab")}</button>
+      <button type="button" class="tab" role="tab" data-tab="workouts" aria-selected="${this._activeTab === "workouts"}">${this._t("workoutsTab")}</button>
+    </div>` : "";
+    const overview = `<div class="tab-panel" role="tabpanel">
       <div class="metrics">${cards}</div>
       ${this._entity("steps") ? `<div class="goal"><div class="goal-row"><span>${this._t("steps")}</span><span>${new Intl.NumberFormat(this._lang()).format(stepValue)} / ${new Intl.NumberFormat(this._lang()).format(goal)}</span></div><div class="goal-track"><div class="goal-fill" style="width:${goalPercent}%"></div></div></div>` : ""}
       ${charts ? `<div class="charts">${charts}</div>` : ""}
       ${this._historyError ? `<div class="history-error">${this._t("historyUnavailable")}</div>` : ""}
+    </div>`;
+    this.shadowRoot.innerHTML = `${this._styles()}<ha-card>
+      <div class="header"><div><h1>${this._escape(this.config.title || this._t("title"))}</h1>
+        ${sync && !["unknown","unavailable"].includes(sync) ? `<div class="eyebrow"><i class="sync-dot"></i>${this._t("synced")}: ${this._escape(this._relativeDate(sync))}</div>` : ""}
+      </div><div class="user-chip">${this._t("source")}</div></div>
+      ${tabs}
+      ${this._activeTab === "workouts" ? this._workoutsContent() : overview}
     </ha-card>`;
     this.shadowRoot.querySelectorAll("[data-entity]").forEach((element) => {
       element.addEventListener("click", () => this._moreInfo(element.dataset.entity));
@@ -422,6 +489,72 @@ class HealthSyncDashboardCard extends HTMLElement {
     this.shadowRoot.querySelectorAll("[data-chart-toggle]").forEach((element) => {
       element.addEventListener("click", () => this._toggleChart(element.dataset.chartToggle));
     });
+    this.shadowRoot.querySelectorAll("[data-tab]").forEach((element) => {
+      element.addEventListener("click", () => this._switchTab(element.dataset.tab));
+    });
+  }
+
+  _switchTab(tab) {
+    if (!["overview", "workouts"].includes(tab) || tab === this._activeTab) return;
+    this._activeTab = tab;
+    this._render();
+  }
+
+  _workoutsContent() {
+    const typeState = this._state("last_workout_type");
+    const type = typeState && !["unknown", "unavailable", "none", ""].includes(typeState.state) ? this._workoutName(typeState.state) : this._t("noWorkouts");
+    const startedAt = typeState?.attributes?.started_at;
+    const started = startedAt ? this._formatWorkoutDate(startedAt) : "";
+    const latestEntity = this._entity("last_workout_type") || this._entity("recent_workouts") || "";
+    const latest = `<button type="button" class="workout-latest"${latestEntity ? ` data-entity="${this._escape(latestEntity)}" aria-label="${this._escape(this._t("showWorkout"))}"` : ""}>
+      <div class="workout-head"><ha-icon icon="mdi:run-fast"></ha-icon><div><div class="workout-kicker">${this._t("latestWorkout")}</div><div class="workout-name">${this._escape(type)}</div></div>${started ? `<div class="workout-time">${this._t("started")}<br>${this._escape(started)}</div>` : ""}</div>
+      <div class="workout-stats">
+        ${this._workoutStat("last_workout_duration", this._t("workoutDuration"))}
+        ${this._workoutStat("last_workout_distance", this._t("workoutDistance"))}
+        ${this._workoutStat("last_workout_calories", this._t("workoutCalories"))}
+      </div>
+    </button>`;
+    const recentState = this._state("recent_workouts");
+    const records = Array.isArray(recentState?.attributes?.workouts) ? recentState.attributes.workouts.filter((item) => item && typeof item === "object") : [];
+    const recentEntity = this._entity("recent_workouts") || latestEntity;
+    const rows = records.map((record) => this._workoutRow(record, recentEntity)).join("");
+    return `<div class="tab-panel workouts-panel" role="tabpanel">${latest}<div class="workout-list-title">${this._t("recentWorkouts")}</div>${rows ? `<div class="workout-list">${rows}</div>` : `<div class="workout-empty">${this._t("noWorkouts")}</div>`}</div>`;
+  }
+
+  _workoutStat(metric, label) {
+    const value = this._state(metric) ? this._format(metric) : "—";
+    return `<div class="workout-stat"><strong>${value}</strong><span>${this._escape(label)}</span></div>`;
+  }
+
+  _workoutRow(record, entityId) {
+    const type = this._workoutName(record.workout_type || record.type || "Workout");
+    const started = this._formatWorkoutDate(record.started_at || record.start);
+    const details = [
+      this._plainWorkoutValue(record.duration_min, "min"),
+      this._plainWorkoutValue(record.distance_m, "m"),
+      this._plainWorkoutValue(record.calories, "kcal"),
+    ].filter(Boolean).join(" · ");
+    return `<button type="button" class="workout-row"${entityId ? ` data-entity="${this._escape(entityId)}"` : ""}><span><strong>${this._escape(type)}</strong><small>${this._escape(started || "—")}</small></span><span class="workout-row-meta">${this._escape(details || "—")}</span></button>`;
+  }
+
+  _workoutName(value) {
+    const text = String(value || "").replaceAll("_", " ").trim();
+    return text ? text.charAt(0).toUpperCase() + text.slice(1) : this._t("noWorkouts");
+  }
+
+  _formatWorkoutDate(raw) {
+    const date = new Date(raw);
+    if (Number.isNaN(date.getTime())) return raw ? String(raw) : "";
+    return new Intl.DateTimeFormat(this._lang(), { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(date);
+  }
+
+  _plainWorkoutValue(raw, unit) {
+    if (raw === null || raw === undefined || raw === "") return "";
+    let value = Number(raw);
+    if (!Number.isFinite(value)) return "";
+    if (unit === "m" && Math.abs(value) >= 1000) { value /= 1000; unit = "km"; }
+    const formatted = new Intl.NumberFormat(this._lang(), { maximumFractionDigits: Math.abs(value) >= 100 ? 0 : 1 }).format(value);
+    return `${formatted} ${unit}`;
   }
 
   _prepareChartState(hasActivity, hasSleep, hasHeart) {
@@ -459,7 +592,7 @@ class HealthSyncDashboardCard extends HTMLElement {
   _collapsibleChart(kind, title, legend, svg, wide = false, legendInBody = false) {
     const expanded = this._expandedChart === kind;
     const action = this._t("switchChart");
-    return `<section class="chart collapsible${wide ? " wide" : ""}">
+    return `<section class="chart collapsible ${kind}${wide ? " wide" : ""}">
       <button type="button" class="chart-title chart-toggle" data-chart-toggle="${kind}" aria-expanded="${expanded}" aria-label="${this._escape(`${action}: ${title}`)}">
         <span class="chart-heading"><span>${title}</span><ha-icon class="chart-chevron" icon="mdi:chevron-down"></ha-icon></span>${legendInBody ? "" : legend}
       </button>

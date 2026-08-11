@@ -22,6 +22,9 @@
 - График пульса за 24 часа прямыми от точки к точке
 - Крупные подсказки со временем получения измерения
 - График фаз сна из атрибутов `deep_minutes`, `core_minutes`, `rem_minutes` и `awake_minutes`
+- Отдельная вкладка тренировок с последней тренировкой и журналом недавних тренировок
+- Автоматическое обнаружение всех workout-сенсоров из HealthSync `0.9.0`
+- Переключатель `show_workouts_tab` в графическом редакторе и YAML
 - Компактная адаптивная раскладка для Masonry и Sections
 - Русский и английский интерфейс
 
@@ -31,8 +34,8 @@
 - [mannotfood/healthsync](https://github.com/mannotfood/healthsync) после хотя бы одной синхронизации
 - HACS для рекомендуемой установки
 
-Карточка поддерживает сущности HealthSync начиная с версии интеграции `0.6.0` и
-проверена по исходному коду версии `0.7.0`.
+Карточка поддерживает сущности HealthSync начиная с версии интеграции `0.6.0`,
+включая сущности тренировок, добавленные в `0.9.0`.
 
 ## Установка через HACS как пользовательский репозиторий
 
@@ -64,6 +67,7 @@ calorie_goal: 600
 show_activity: true
 show_sleep: true
 show_heart_rate: true
+show_workouts_tab: true
 
 # Плитки показателей — все включены по умолчанию
 show_steps_metric: true
@@ -89,7 +93,19 @@ entities:
   sleep_onset: sensor.healthsync_fell_asleep
   sleep_wake: sensor.healthsync_woke_up
   last_sync: sensor.healthsync_last_sync
+  last_workout_type: sensor.healthsync_workouts_last_workout_type
+  last_workout_duration: sensor.healthsync_workouts_last_workout_duration
+  last_workout_distance: sensor.healthsync_workouts_last_workout_distance
+  last_workout_calories: sensor.healthsync_workouts_last_workout_calories
+  recent_workouts: sensor.healthsync_workouts_recent_workouts
 ```
+
+## Тренировки
+
+HealthSync `0.9.0` предоставляет тип, длительность, дистанцию и калории последней
+тренировки, а также до десяти записей в атрибуте `workouts` сущности недавних
+тренировок. Карточка показывает их на отдельной вкладке. Event-сущность
+`Workout completed` остаётся доступной для автоматизаций и журнала Home Assistant.
 
 ## История сна
 

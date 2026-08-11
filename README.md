@@ -21,6 +21,9 @@ integration's native sensors and Recorder history without external frontend depe
 - Independent step and calorie scales in the activity chart
 - Point-to-point 24-hour heart-rate chart with receipt-time tooltips
 - Sleep-stage chart built from `deep_minutes`, `core_minutes`, `rem_minutes` and `awake_minutes`
+- Separate Workouts tab for the latest workout and the recent workout log
+- Automatic discovery of all workout sensors added in HealthSync `0.9.0`
+- Optional `show_workouts_tab` switch in the graphical editor and YAML
 - Compact responsive layout for Masonry and Sections dashboards
 - English and Russian interface
 
@@ -31,7 +34,7 @@ integration's native sensors and Recorder history without external frontend depe
 - HACS for the recommended installation method
 
 The card supports the HealthSync entities introduced by integration version `0.6.0`
-and verified against `0.7.0`.
+and the workout entities added in `0.9.0`.
 
 ## Install with HACS as a custom repository
 
@@ -64,6 +67,7 @@ calorie_goal: 600
 show_activity: true
 show_sleep: true
 show_heart_rate: true
+show_workouts_tab: true
 
 # Optional metric tiles (all enabled by default)
 show_steps_metric: true
@@ -89,7 +93,19 @@ entities:
   sleep_onset: sensor.healthsync_fell_asleep
   sleep_wake: sensor.healthsync_woke_up
   last_sync: sensor.healthsync_last_sync
+  last_workout_type: sensor.healthsync_workouts_last_workout_type
+  last_workout_duration: sensor.healthsync_workouts_last_workout_duration
+  last_workout_distance: sensor.healthsync_workouts_last_workout_distance
+  last_workout_calories: sensor.healthsync_workouts_last_workout_calories
+  recent_workouts: sensor.healthsync_workouts_recent_workouts
 ```
+
+## Workouts
+
+HealthSync `0.9.0` exposes the latest workout type, duration, distance and calories,
+plus up to ten entries in the `workouts` attribute of the Recent workouts sensor.
+The card displays them in a dedicated tab. The integration's `Workout completed`
+event entity remains available for Home Assistant automations and Logbook entries.
 
 ## Sleep history
 
