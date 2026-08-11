@@ -36,6 +36,8 @@
 
 ## Установка через HACS как пользовательский репозиторий
 
+[![Открыть репозиторий в Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=BrainDeLook&repository=healthsync-dashboard-card&category=plugin)
+
 1. Откройте **HACS**.
 2. В меню с тремя точками выберите **Пользовательские репозитории**.
 3. Добавьте `https://github.com/BrainDeLook/healthsync-dashboard-card`.
