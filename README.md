@@ -14,6 +14,7 @@ integration's native sensors and Recorder history without external frontend depe
 
 - Automatic discovery of standard HealthSync entities
 - Native Home Assistant graphical card editor with manual entity overrides
+- Independent visibility switches for every metric tile
 - Current steps, active calories, heart rate, HRV and sleep summary
 - Fell-asleep and wake-up times
 - Step-goal progress bar
@@ -61,6 +62,15 @@ calorie_goal: 600
 show_activity: true
 show_sleep: true
 show_heart_rate: true
+
+# Optional metric tiles (all enabled by default)
+show_steps_metric: true
+show_calories_metric: true
+show_sleep_metric: true
+show_heart_metric: true
+show_hrv_metric: true
+show_sleep_onset_metric: true
+show_sleep_wake_metric: true
 ```
 
 Standard HealthSync entity IDs are discovered automatically. Renamed entities can be

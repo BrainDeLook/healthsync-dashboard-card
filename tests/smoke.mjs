@@ -62,6 +62,11 @@ assert.deepEqual(entityPanel.schema.map((field) => field.name), [
   "last_sync", "steps", "active_calories", "heart_rate",
   "heart_rate_variability", "sleep_duration", "sleep_onset", "sleep_wake",
 ]);
+const tilePanel = form.schema.find((field) => field.icon === "mdi:view-grid-outline");
+assert.ok(tilePanel, "the editor should expose individual metric tile switches");
+assert.ok(tilePanel.schema.some((field) => field.name === "show_steps_metric"));
+assert.ok(tilePanel.schema.some((field) => field.name === "show_hrv_metric"));
+assert.ok(tilePanel.schema.some((field) => field.name === "show_sleep_wake_metric"));
 
 globalThis.document = {
   createElement(name) {
@@ -114,6 +119,18 @@ assert.match(card.shadowRoot.innerHTML, /data-current-only="false"/);
 assert.match(card.shadowRoot.innerHTML, /data-interpolation="linear"/);
 assert.match(card.shadowRoot.innerHTML, /class="heart-trace" d="M [^"]+ L [^"]+ L /);
 assert.match(card.shadowRoot.innerHTML, /Received:/);
+
+card.setConfig({
+  language: "en", days: 3,
+  show_steps_metric: false,
+  show_hrv_metric: false,
+  show_sleep_wake_metric: false,
+});
+assert.doesNotMatch(card.shadowRoot.innerHTML, /data-entity="sensor\.healthsync_steps_today"/);
+assert.doesNotMatch(card.shadowRoot.innerHTML, /data-entity="sensor\.healthsync_heart_rate_variability"/);
+assert.doesNotMatch(card.shadowRoot.innerHTML, /data-entity="sensor\.healthsync_woke_up"/);
+assert.match(card.shadowRoot.innerHTML, /data-entity="sensor\.healthsync_active_calories_today"/);
+assert.match(card.shadowRoot.innerHTML, /data-chart-toggle="activity"/);
 
 let historyPath = "";
 card._hass.callApi = async (_method, path) => {

@@ -14,6 +14,7 @@
 
 - Автоматическое обнаружение стандартных сущностей HealthSync
 - Графический редактор Home Assistant и ручная замена любой сущности
+- Независимое включение и выключение каждой плитки показателя
 - Шаги, активные калории, пульс, HRV и сводка сна
 - Время засыпания и пробуждения
 - Индикатор дневной цели шагов
@@ -61,6 +62,15 @@ calorie_goal: 600
 show_activity: true
 show_sleep: true
 show_heart_rate: true
+
+# Плитки показателей — все включены по умолчанию
+show_steps_metric: true
+show_calories_metric: true
+show_sleep_metric: true
+show_heart_metric: true
+show_hrv_metric: true
+show_sleep_onset_metric: true
+show_sleep_wake_metric: true
 ```
 
 Стандартные сущности определяются автоматически. После переименования их можно выбрать

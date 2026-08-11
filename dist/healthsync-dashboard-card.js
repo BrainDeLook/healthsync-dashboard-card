@@ -58,6 +58,9 @@ const HS_EDITOR_LABELS = {
     days: "History period", step_goal: "Daily step goal", calorie_goal: "Daily active calorie goal",
     show_activity: "Show activity chart", show_sleep: "Show sleep chart",
     show_heart_rate: "Show heart-rate chart",
+    show_steps_metric: "Steps", show_calories_metric: "Active calories",
+    show_sleep_metric: "Sleep", show_heart_metric: "Heart rate", show_hrv_metric: "HRV",
+    show_sleep_onset_metric: "Fell asleep", show_sleep_wake_metric: "Woke up",
     last_sync: "Last synchronization", steps: "Steps", active_calories: "Active calories",
     sleep_duration: "Sleep last night", sleep_onset: "Fell asleep", sleep_wake: "Woke up",
     heart_rate: "Heart rate", heart_rate_variability: "Heart-rate variability",
@@ -67,6 +70,9 @@ const HS_EDITOR_LABELS = {
     days: "Период истории", step_goal: "Дневная цель шагов", calorie_goal: "Дневная цель активных калорий",
     show_activity: "Показывать график активности", show_sleep: "Показывать график сна",
     show_heart_rate: "Показывать график пульса",
+    show_steps_metric: "Шаги", show_calories_metric: "Активные калории",
+    show_sleep_metric: "Сон", show_heart_metric: "Пульс", show_hrv_metric: "HRV",
+    show_sleep_onset_metric: "Засыпание", show_sleep_wake_metric: "Пробуждение",
     last_sync: "Последняя синхронизация", steps: "Шаги", active_calories: "Активные калории",
     sleep_duration: "Сон прошлой ночью", sleep_onset: "Засыпание", sleep_wake: "Пробуждение",
     heart_rate: "Пульс", heart_rate_variability: "Вариабельность пульса",
@@ -97,6 +103,13 @@ class HealthSyncDashboardCard extends HTMLElement {
       show_activity: true,
       show_sleep: true,
       show_heart_rate: true,
+      show_steps_metric: true,
+      show_calories_metric: true,
+      show_sleep_metric: true,
+      show_heart_metric: true,
+      show_hrv_metric: true,
+      show_sleep_onset_metric: true,
+      show_sleep_wake_metric: true,
       step_goal: 10000,
       calorie_goal: 600,
       entities: {},
@@ -126,6 +139,9 @@ class HealthSyncDashboardCard extends HTMLElement {
       title: "HealthSync", language: "auto", days: 7,
       step_goal: 10000, calorie_goal: 600,
       show_activity: true, show_sleep: true, show_heart_rate: true,
+      show_steps_metric: true, show_calories_metric: true, show_sleep_metric: true,
+      show_heart_metric: true, show_hrv_metric: true,
+      show_sleep_onset_metric: true, show_sleep_wake_metric: true,
       entities: {},
     };
   }
@@ -180,6 +196,19 @@ class HealthSyncDashboardCard extends HTMLElement {
             { name: "show_activity", default: true, selector: { boolean: {} } },
             { name: "show_sleep", default: true, selector: { boolean: {} } },
             { name: "show_heart_rate", default: true, selector: { boolean: {} } },
+          ],
+        },
+        {
+          type: "expandable", name: "", flatten: true,
+          title: lang === "ru" ? "Плитки показателей" : "Metric tiles", icon: "mdi:view-grid-outline",
+          schema: [
+            { name: "show_steps_metric", default: true, selector: { boolean: {} } },
+            { name: "show_calories_metric", default: true, selector: { boolean: {} } },
+            { name: "show_sleep_metric", default: true, selector: { boolean: {} } },
+            { name: "show_heart_metric", default: true, selector: { boolean: {} } },
+            { name: "show_hrv_metric", default: true, selector: { boolean: {} } },
+            { name: "show_sleep_onset_metric", default: true, selector: { boolean: {} } },
+            { name: "show_sleep_wake_metric", default: true, selector: { boolean: {} } },
           ],
         },
         {
@@ -360,13 +389,13 @@ class HealthSyncDashboardCard extends HTMLElement {
     const goal = Math.max(1, Number(this.config.step_goal) || 10000);
     const goalPercent = Math.min(100, Math.max(0, stepValue / goal * 100));
     const cards = [
-      this._metric("steps", this._t("steps"), "mdi:walk", "blue"),
-      this._metric("active_calories", this._t("calories"), "mdi:fire", "orange"),
-      this._metric("sleep_duration", this._t("sleepDuration"), "mdi:sleep", "indigo"),
-      this._metric("heart_rate", this._t("heartRate"), "mdi:heart-pulse", "red"),
-      this._metric("heart_rate_variability", this._t("hrv"), "mdi:waves", "green"),
-      this._metric("sleep_onset", this._t("fellAsleep"), "mdi:weather-night", "indigo"),
-      this._metric("sleep_wake", this._t("wokeUp"), "mdi:weather-sunset-up", "cyan"),
+      this.config.show_steps_metric ? this._metric("steps", this._t("steps"), "mdi:walk", "blue") : "",
+      this.config.show_calories_metric ? this._metric("active_calories", this._t("calories"), "mdi:fire", "orange") : "",
+      this.config.show_sleep_metric ? this._metric("sleep_duration", this._t("sleepDuration"), "mdi:sleep", "indigo") : "",
+      this.config.show_heart_metric ? this._metric("heart_rate", this._t("heartRate"), "mdi:heart-pulse", "red") : "",
+      this.config.show_hrv_metric ? this._metric("heart_rate_variability", this._t("hrv"), "mdi:waves", "green") : "",
+      this.config.show_sleep_onset_metric ? this._metric("sleep_onset", this._t("fellAsleep"), "mdi:weather-night", "indigo") : "",
+      this.config.show_sleep_wake_metric ? this._metric("sleep_wake", this._t("wokeUp"), "mdi:weather-sunset-up", "cyan") : "",
     ].filter(Boolean).join("");
     const hasActivityChart = this.config.show_activity && (this._entity("steps") || this._entity("active_calories"));
     const hasSleepChart = this.config.show_sleep && this._entity("sleep_duration");
