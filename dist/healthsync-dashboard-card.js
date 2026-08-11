@@ -1,9 +1,9 @@
-/* HealthSync Dashboard Card v0.2.0
+/* HealthSync Dashboard Card v0.2.1
  * A dependency-free Lovelace card for mannotfood/healthsync.
  * MIT License
  */
 
-const HS_VERSION = "0.2.0";
+const HS_VERSION = "0.2.1";
 const HS_METRICS = [
   "last_sync", "steps", "active_calories", "heart_rate",
   "heart_rate_variability", "sleep_duration", "sleep_onset", "sleep_wake",
@@ -349,7 +349,7 @@ class HealthSyncDashboardCard extends HTMLElement {
 
   _styles() {
     return `<style>
-      :host { display:block; container-type:inline-size; --hb-blue:#4c8dff; --hb-orange:#ff8a4c; --hb-red:#f05b67; --hb-cyan:#35b9c7; --hb-indigo:#6d66d8; }
+      :host { display:block; container-type:inline-size; overflow-anchor:none; --hb-blue:#4c8dff; --hb-orange:#ff8a4c; --hb-red:#f05b67; --hb-cyan:#35b9c7; --hb-indigo:#6d66d8; }
       ha-card { overflow:hidden; padding:14px; color:var(--primary-text-color); background:var(--ha-card-background,var(--card-background-color)); }
       * { box-sizing:border-box; }
       .header { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:12px; }
@@ -361,6 +361,7 @@ class HealthSyncDashboardCard extends HTMLElement {
       .tab { appearance:none; border:0; border-radius:9px; padding:8px 10px; background:transparent; color:var(--secondary-text-color); font:inherit; font-size:12px; font-weight:700; cursor:pointer; }
       .tab[aria-selected="true"] { background:var(--ha-card-background,var(--card-background-color)); color:var(--primary-text-color); box-shadow:0 1px 4px rgba(0,0,0,.22); }
       .tab:focus-visible { outline:2px solid var(--primary-color); outline-offset:1px; }
+      .tab-panel[hidden] { display:none!important; }
       .metrics { display:grid; grid-template-columns:repeat(auto-fit,minmax(132px,1fr)); gap:8px; }
       .metric { appearance:none; border:1px solid var(--divider-color); border-radius:13px; min-height:70px; padding:10px; background:color-mix(in srgb,var(--card-background-color) 94%,var(--hb-color)); color:var(--primary-text-color); display:flex; align-items:center; gap:9px; text-align:left; cursor:pointer; font:inherit; transition:transform .15s ease,border-color .15s ease; }
       .metric:hover { transform:translateY(-1px); border-color:color-mix(in srgb,var(--hb-color) 50%,var(--divider-color)); }
@@ -470,7 +471,7 @@ class HealthSyncDashboardCard extends HTMLElement {
       <button type="button" class="tab" role="tab" data-tab="overview" aria-selected="${this._activeTab === "overview"}">${this._t("overviewTab")}</button>
       <button type="button" class="tab" role="tab" data-tab="workouts" aria-selected="${this._activeTab === "workouts"}">${this._t("workoutsTab")}</button>
     </div>` : "";
-    const overview = `<div class="tab-panel" role="tabpanel">
+    const overview = `<div class="tab-panel" role="tabpanel" data-tab-panel="overview"${this._activeTab === "overview" ? "" : " hidden"}>
       <div class="metrics">${cards}</div>
       ${this._entity("steps") ? `<div class="goal"><div class="goal-row"><span>${this._t("steps")}</span><span>${new Intl.NumberFormat(this._lang()).format(stepValue)} / ${new Intl.NumberFormat(this._lang()).format(goal)}</span></div><div class="goal-track"><div class="goal-fill" style="width:${goalPercent}%"></div></div></div>` : ""}
       ${charts ? `<div class="charts">${charts}</div>` : ""}
@@ -481,7 +482,8 @@ class HealthSyncDashboardCard extends HTMLElement {
         ${sync && !["unknown","unavailable"].includes(sync) ? `<div class="eyebrow"><i class="sync-dot"></i>${this._t("synced")}: ${this._escape(this._relativeDate(sync))}</div>` : ""}
       </div><div class="user-chip">${this._t("source")}</div></div>
       ${tabs}
-      ${this._activeTab === "workouts" ? this._workoutsContent() : overview}
+      ${overview}
+      ${showWorkoutTab ? this._workoutsContent(this._activeTab !== "workouts") : ""}
     </ha-card>`;
     this.shadowRoot.querySelectorAll("[data-entity]").forEach((element) => {
       element.addEventListener("click", () => this._moreInfo(element.dataset.entity));
@@ -497,10 +499,15 @@ class HealthSyncDashboardCard extends HTMLElement {
   _switchTab(tab) {
     if (!["overview", "workouts"].includes(tab) || tab === this._activeTab) return;
     this._activeTab = tab;
-    this._render();
+    this.shadowRoot.querySelectorAll("[data-tab]").forEach((element) => {
+      element.setAttribute("aria-selected", String(element.dataset.tab === tab));
+    });
+    this.shadowRoot.querySelectorAll("[data-tab-panel]").forEach((element) => {
+      element.hidden = element.dataset.tabPanel !== tab;
+    });
   }
 
-  _workoutsContent() {
+  _workoutsContent(hidden = false) {
     const typeState = this._state("last_workout_type");
     const type = typeState && !["unknown", "unavailable", "none", ""].includes(typeState.state) ? this._workoutName(typeState.state) : this._t("noWorkouts");
     const startedAt = typeState?.attributes?.started_at;
@@ -518,7 +525,7 @@ class HealthSyncDashboardCard extends HTMLElement {
     const records = Array.isArray(recentState?.attributes?.workouts) ? recentState.attributes.workouts.filter((item) => item && typeof item === "object") : [];
     const recentEntity = this._entity("recent_workouts") || latestEntity;
     const rows = records.map((record) => this._workoutRow(record, recentEntity)).join("");
-    return `<div class="tab-panel workouts-panel" role="tabpanel">${latest}<div class="workout-list-title">${this._t("recentWorkouts")}</div>${rows ? `<div class="workout-list">${rows}</div>` : `<div class="workout-empty">${this._t("noWorkouts")}</div>`}</div>`;
+    return `<div class="tab-panel workouts-panel" role="tabpanel" data-tab-panel="workouts"${hidden ? " hidden" : ""}>${latest}<div class="workout-list-title">${this._t("recentWorkouts")}</div>${rows ? `<div class="workout-list">${rows}</div>` : `<div class="workout-empty">${this._t("noWorkouts")}</div>`}</div>`;
   }
 
   _workoutStat(metric, label) {
@@ -586,7 +593,12 @@ class HealthSyncDashboardCard extends HTMLElement {
       this._expandedChart = chart;
     }
     try { globalThis.localStorage?.setItem(this._chartStateKey, this._expandedChart); } catch (_) { /* Storage can be disabled. */ }
-    this._render();
+    this.shadowRoot.querySelectorAll("[data-chart-toggle]").forEach((element) => {
+      const expanded = element.dataset.chartToggle === this._expandedChart;
+      element.setAttribute("aria-expanded", String(expanded));
+      const body = element.nextElementSibling;
+      if (body?.classList.contains("chart-body")) body.hidden = !expanded;
+    });
   }
 
   _collapsibleChart(kind, title, legend, svg, wide = false, legendInBody = false) {

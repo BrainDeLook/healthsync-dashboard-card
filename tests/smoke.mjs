@@ -104,6 +104,7 @@ card.hass = { language: "en", states: healthsyncStates, callApi: async () => [] 
 await new Promise((resolve) => setTimeout(resolve, 0));
 
 assert.match(card.shadowRoot.innerHTML, /HealthSync/);
+assert.match(card.shadowRoot.innerHTML, /overflow-anchor:none/);
 assert.match(card.shadowRoot.innerHTML, /8,426/);
 assert.match(card.shadowRoot.innerHTML, /23:41/);
 assert.match(card.shadowRoot.innerHTML, /07:12/);
@@ -122,8 +123,13 @@ assert.match(card.shadowRoot.innerHTML, />1\.5 h<\/title>/);
 assert.match(card.shadowRoot.innerHTML, />0\.3 h<\/title>/);
 assert.doesNotMatch(card.shadowRoot.innerHTML, /(?:NaN|Infinity)/);
 
+const interactionRender = card._render.bind(card);
+let interactionRenderCount = 0;
+card._render = () => { interactionRenderCount += 1; return interactionRender(); };
+assert.match(card.shadowRoot.innerHTML, /data-tab-panel="workouts" hidden/);
 card._switchTab("workouts");
-assert.match(card.shadowRoot.innerHTML, /aria-selected="true">Workouts/);
+assert.equal(card._activeTab, "workouts");
+assert.equal(interactionRenderCount, 0, "switching tabs must not replace the card DOM");
 assert.match(card.shadowRoot.innerHTML, /Latest workout/);
 assert.match(card.shadowRoot.innerHTML, /Running/);
 assert.match(card.shadowRoot.innerHTML, /6\.4 <small>km<\/small>/);
@@ -131,17 +137,17 @@ assert.match(card.shadowRoot.innerHTML, /Strength training/);
 assert.match(card.shadowRoot.innerHTML, /42 min/);
 assert.doesNotMatch(card.shadowRoot.innerHTML, /0 m/);
 card._switchTab("overview");
+assert.equal(card._activeTab, "overview");
+assert.equal(interactionRenderCount, 0);
 
 card._toggleChart("sleep");
-assert.match(card.shadowRoot.innerHTML, /data-chart-toggle="activity" aria-expanded="false"/);
-assert.match(card.shadowRoot.innerHTML, /data-chart-toggle="sleep" aria-expanded="true"/);
-assert.match(card.shadowRoot.innerHTML, /data-chart-toggle="sleep"[\s\S]*?<\/button>\s*<div class="chart-body"><div class="chart-body-legend"><span class="legend">/);
-assert.match(card.shadowRoot.innerHTML, /data-chart-toggle="heart" aria-expanded="false"/);
+assert.equal(card._expandedChart, "sleep");
+assert.equal(interactionRenderCount, 0, "switching charts must not replace the card DOM");
 card._toggleChart("heart");
-assert.match(card.shadowRoot.innerHTML, /data-chart-toggle="activity" aria-expanded="false"/);
-assert.match(card.shadowRoot.innerHTML, /data-chart-toggle="sleep" aria-expanded="false"/);
-assert.match(card.shadowRoot.innerHTML, /data-chart-toggle="heart" aria-expanded="true"/);
+assert.equal(card._expandedChart, "heart");
+assert.equal(interactionRenderCount, 0);
 assert.match(card.shadowRoot.innerHTML, /data-current-only="true"/);
+card._render = interactionRender;
 card._history["sensor.healthsync_heart_rate"] = [
   { t: Date.now() - 7200000, v: 84, a: {} },
   { t: Date.now() - 3600000, v: 100, a: {} },
