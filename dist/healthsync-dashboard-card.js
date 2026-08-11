@@ -1,9 +1,9 @@
-/* HealthSync Dashboard Card v0.1.0
+/* HealthSync Dashboard Card v0.1.1
  * A dependency-free Lovelace card for mannotfood/healthsync.
  * MIT License
  */
 
-const HS_VERSION = "0.1.0";
+const HS_VERSION = "0.1.1";
 const HS_METRICS = [
   "last_sync", "steps", "active_calories", "heart_rate",
   "heart_rate_variability", "sleep_duration", "sleep_onset", "sleep_wake",
@@ -369,11 +369,12 @@ class HealthSyncDashboardCard extends HTMLElement {
       this._metric("sleep_wake", this._t("wokeUp"), "mdi:weather-sunset-up", "cyan"),
     ].filter(Boolean).join("");
     const hasActivityChart = this.config.show_activity && (this._entity("steps") || this._entity("active_calories"));
+    const hasSleepChart = this.config.show_sleep && this._entity("sleep_duration");
     const hasHeartChart = this.config.show_heart_rate && this._entity("heart_rate");
-    this._prepareChartState(Boolean(hasActivityChart), Boolean(hasHeartChart));
+    this._prepareChartState(Boolean(hasActivityChart), Boolean(hasSleepChart), Boolean(hasHeartChart));
     const charts = [
       hasActivityChart ? this._activityChart() : "",
-      this.config.show_sleep && this._entity("sleep_duration") ? this._sleepChart() : "",
+      hasSleepChart ? this._sleepChart() : "",
       hasHeartChart ? this._heartChart() : "",
     ].filter(Boolean).join("");
     this.shadowRoot.innerHTML = `${this._styles()}<ha-card>
@@ -393,24 +394,34 @@ class HealthSyncDashboardCard extends HTMLElement {
     });
   }
 
-  _prepareChartState(hasActivity, hasHeart) {
+  _prepareChartState(hasActivity, hasSleep, hasHeart) {
     const key = "healthsync-dashboard-card:expanded";
+    const available = [
+      hasActivity ? "activity" : "",
+      hasSleep ? "sleep" : "",
+      hasHeart ? "heart" : "",
+    ].filter(Boolean);
     if (key !== this._chartStateKey) {
       this._chartStateKey = key;
       let saved = null;
       try { saved = globalThis.localStorage?.getItem(key); } catch (_) { /* Storage can be disabled. */ }
-      this._expandedChart = ["activity", "heart"].includes(saved) ? saved : "activity";
+      this._expandedChart = available.includes(saved) ? saved : available[0] || null;
     }
-    if (this._expandedChart === "activity" && !hasActivity && hasHeart) this._expandedChart = "heart";
-    if (this._expandedChart === "heart" && !hasHeart && hasActivity) this._expandedChart = "activity";
+    if (!available.includes(this._expandedChart)) this._expandedChart = available[0] || null;
   }
 
   _toggleChart(chart) {
-    if (!["activity", "heart"].includes(chart)) return;
-    const hasActivity = this.config.show_activity && (this._entity("steps") || this._entity("active_calories"));
-    const hasHeart = this.config.show_heart_rate && this._entity("heart_rate");
-    if (!hasActivity || !hasHeart) return;
-    this._expandedChart = this._expandedChart === "activity" ? "heart" : "activity";
+    const available = [
+      this.config.show_activity && (this._entity("steps") || this._entity("active_calories")) ? "activity" : "",
+      this.config.show_sleep && this._entity("sleep_duration") ? "sleep" : "",
+      this.config.show_heart_rate && this._entity("heart_rate") ? "heart" : "",
+    ].filter(Boolean);
+    if (!available.includes(chart) || !available.length) return;
+    if (this._expandedChart === chart && available.length > 1) {
+      this._expandedChart = available[(available.indexOf(chart) + 1) % available.length];
+    } else {
+      this._expandedChart = chart;
+    }
     try { globalThis.localStorage?.setItem(this._chartStateKey, this._expandedChart); } catch (_) { /* Storage can be disabled. */ }
     this._render();
   }
@@ -533,7 +544,9 @@ class HealthSyncDashboardCard extends HTMLElement {
     const colors=["#3949ab","#7986cb","#26c6da","#ffb74d"];
     let bars="";
     deep.forEach((_,i)=>{ let y=top+plotH; [deep[i],core[i],rem[i],awake[i]].forEach((item,j)=>{ const h=(item.has?item.value:0)/max*plotH; y-=h; bars+=`<rect x="${left+i*slot+slot*.2}" y="${y}" width="${slot*.6}" height="${Math.max(0,h)}" rx="${j===3?3:0}" fill="${colors[j]}"><title>${item.value.toFixed(1)} h</title></rect>`; }); });
-    return `<section class="chart" data-chart="sleep"><div class="chart-title"><span>${this._historyTitle("sleep")}</span><span class="legend"><span><i style="--dot:${colors[0]}"></i>${this._t("deep")}</span><span><i style="--dot:${colors[1]}"></i>${this._t("core")}</span><span><i style="--dot:${colors[2]}"></i>${this._t("rem")}</span><span><i style="--dot:${colors[3]}"></i>${this._t("awake")}</span></span></div><svg viewBox="0 0 ${width} ${height}" role="img">${this._grid(width,height,left,right,top,bottom,max)}${bars}${this._dayLabels(deep,width,height,left,right)}</svg></section>`;
+    const legend=`<span class="legend"><span><i style="--dot:${colors[0]}"></i>${this._t("deep")}</span><span><i style="--dot:${colors[1]}"></i>${this._t("core")}</span><span><i style="--dot:${colors[2]}"></i>${this._t("rem")}</span><span><i style="--dot:${colors[3]}"></i>${this._t("awake")}</span></span>`;
+    const svg=`<svg viewBox="0 0 ${width} ${height}" role="img" data-chart="sleep">${this._grid(width,height,left,right,top,bottom,max)}${bars}${this._dayLabels(deep,width,height,left,right)}</svg>`;
+    return this._collapsibleChart("sleep",this._historyTitle("sleep"),legend,svg);
   }
 
   _heartChart() {

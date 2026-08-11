@@ -86,6 +86,7 @@ assert.match(card.shadowRoot.innerHTML, /8,426/);
 assert.match(card.shadowRoot.innerHTML, /23:41/);
 assert.match(card.shadowRoot.innerHTML, /07:12/);
 assert.match(card.shadowRoot.innerHTML, /data-chart-toggle="activity" aria-expanded="true"/);
+assert.match(card.shadowRoot.innerHTML, /data-chart-toggle="sleep" aria-expanded="false"/);
 assert.match(card.shadowRoot.innerHTML, /data-chart-toggle="heart" aria-expanded="false"/);
 assert.match(card.shadowRoot.innerHTML, /data-chart="sleep"/);
 assert.match(card.shadowRoot.innerHTML, /Sleep stages · 3 days/);
@@ -95,7 +96,13 @@ assert.match(card.shadowRoot.innerHTML, />1\.5 h<\/title>/);
 assert.match(card.shadowRoot.innerHTML, />0\.3 h<\/title>/);
 assert.doesNotMatch(card.shadowRoot.innerHTML, /(?:NaN|Infinity)/);
 
+card._toggleChart("sleep");
+assert.match(card.shadowRoot.innerHTML, /data-chart-toggle="activity" aria-expanded="false"/);
+assert.match(card.shadowRoot.innerHTML, /data-chart-toggle="sleep" aria-expanded="true"/);
+assert.match(card.shadowRoot.innerHTML, /data-chart-toggle="heart" aria-expanded="false"/);
 card._toggleChart("heart");
+assert.match(card.shadowRoot.innerHTML, /data-chart-toggle="activity" aria-expanded="false"/);
+assert.match(card.shadowRoot.innerHTML, /data-chart-toggle="sleep" aria-expanded="false"/);
 assert.match(card.shadowRoot.innerHTML, /data-chart-toggle="heart" aria-expanded="true"/);
 assert.match(card.shadowRoot.innerHTML, /data-current-only="true"/);
 card._history["sensor.healthsync_heart_rate"] = [
