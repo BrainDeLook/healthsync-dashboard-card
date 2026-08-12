@@ -154,6 +154,8 @@ card._history["sensor.healthsync_heart_rate"] = [
 ];
 card._render();
 assert.match(card.shadowRoot.innerHTML, /data-current-only="false"/);
+assert.doesNotMatch(card.shadowRoot.innerHTML, /class="heart-point"/);
+assert.match(card.shadowRoot.innerHTML, /class="chart-hit"/);
 assert.match(card.shadowRoot.innerHTML, /data-interpolation="linear"/);
 assert.match(card.shadowRoot.innerHTML, /class="heart-trace" d="M [^"]+ L [^"]+ L /);
 assert.match(card.shadowRoot.innerHTML, /Received:/);

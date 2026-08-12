@@ -1,9 +1,9 @@
-/* HealthSync Dashboard Card v0.2.1
+/* HealthSync Dashboard Card v0.2.2
  * A dependency-free Lovelace card for mannotfood/healthsync.
  * MIT License
  */
 
-const HS_VERSION = "0.2.1";
+const HS_VERSION = "0.2.2";
 const HS_METRICS = [
   "last_sync", "steps", "active_calories", "heart_rate",
   "heart_rate_variability", "sleep_duration", "sleep_onset", "sleep_wake",
@@ -738,9 +738,9 @@ class HealthSyncDashboardCard extends HTMLElement {
     const tracePoints=hasHistory?measured:[{x:left,y:currentY},{x:left+plotW,y:currentY}];
     const trace=this._heartTracePath(tracePoints);
     const centerY=top+plotH/2;
-    const historyMarkers=hasHistory?points.slice(0,-1).map((point,index)=>this._heartMarker(point,measured[index].x,measured[index].y,4,width)).join(""):"";
+    const historyMarkers=hasHistory?points.slice(0,-1).map((point,index)=>this._heartMarker(point,measured[index].x,measured[index].y,width)).join(""):"";
     const currentX=hasHistory?measured[measured.length-1].x:left+plotW;
-    const currentMarker=`${this._heartMarker(current,currentX,currentY,5,width)}<text class="axis" x="${currentX-8}" y="${Math.max(top+10,currentY-9)}" text-anchor="end" style="fill:var(--hb-red)">${current.v.toFixed(0)} bpm</text>`;
+    const currentMarker=`${this._heartMarker(current,currentX,currentY,width)}<text class="axis" x="${currentX-8}" y="${Math.max(top+10,currentY-9)}" text-anchor="end" style="fill:var(--hb-red)">${current.v.toFixed(0)} bpm</text>`;
     const legend = `<span class="legend"><span><i style="--dot:var(--hb-red)"></i>bpm</span></span>`;
     const svg = `<svg viewBox="0 0 ${width} ${height}" role="img" data-current-only="${!hasHistory}" data-interpolation="linear">${this._grid(width,height,left,right,top,bottom,max,min)}<line class="heart-center" x1="${left}" x2="${left+plotW}" y1="${centerY}" y2="${centerY}" stroke="var(--secondary-text-color)" stroke-width="1.5" stroke-dasharray="5 7" opacity=".5"/><path class="heart-trace" d="${trace}" fill="none" stroke="var(--hb-red)" stroke-width="3"${hasHistory?"":` stroke-dasharray="10 7"`} stroke-linejoin="round" stroke-linecap="round"/>${historyMarkers}${currentMarker}<text class="axis" x="${left}" y="${height-6}">24h</text><text class="axis" x="${left+plotW}" y="${height-6}" text-anchor="end">${this._t("today")}</text></svg>`;
     return this._collapsibleChart("heart", this._t("heart"), legend, svg, true);
@@ -751,8 +751,8 @@ class HealthSyncDashboardCard extends HTMLElement {
     return points.map((point,index)=>`${index?"L":"M"} ${point.x},${point.y}`).join(" ");
   }
 
-  _heartMarker(point,x,y,r,width) {
-    const mark=`<circle class="chart-hit" cx="${x}" cy="${y}" r="12"/><circle class="heart-point" cx="${x}" cy="${y}" r="${r}" fill="var(--hb-red)"/>`;
+  _heartMarker(point,x,y,width) {
+    const mark=`<circle class="chart-hit" cx="${x}" cy="${y}" r="12"/>`;
     return this._chartSample(point,x,y,width,`${point.v.toFixed(0)} bpm`,"heart-sample",mark);
   }
 
