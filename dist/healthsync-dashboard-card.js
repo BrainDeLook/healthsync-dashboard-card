@@ -1,9 +1,9 @@
-/* HealthSync Dashboard Card v0.2.2
+/* HealthSync Dashboard Card v0.2.3
  * A dependency-free Lovelace card for mannotfood/healthsync.
  * MIT License
  */
 
-const HS_VERSION = "0.2.2";
+const HS_VERSION = "0.2.3";
 const HS_METRICS = [
   "last_sync", "steps", "active_calories", "heart_rate",
   "heart_rate_variability", "sleep_duration", "sleep_onset", "sleep_wake",
@@ -622,10 +622,12 @@ class HealthSyncDashboardCard extends HTMLElement {
     if (metric === "heart_rate") points.push(...this._liveHeartHistory);
     const state = this._state(metric);
     const currentValue = Number(state?.state);
-    const rawTime=state?.last_updated||state?.last_changed;
+    const rawTime=state?.last_reported||state?.last_updated||state?.last_changed;
     const parsedTime=rawTime?new Date(rawTime).getTime():Date.now();
     const currentTime=Number.isFinite(parsedTime)?parsedTime:Date.now();
-    if (Number.isFinite(currentValue) && (!points.length || points[points.length - 1].v !== currentValue || (metric === "sleep_duration" && points[points.length - 1].t !== currentTime))) {
+    const lastPoint=points[points.length-1];
+    const receivedAgain=metric === "heart_rate" && Boolean(rawTime) && currentTime > (lastPoint?.t ?? 0);
+    if (Number.isFinite(currentValue) && (!lastPoint || lastPoint.v !== currentValue || receivedAgain || (metric === "sleep_duration" && lastPoint.t !== currentTime))) {
       points.push({ t:currentTime, v:currentValue, a:state.attributes || {} });
     }
     const unique = new Map();
@@ -639,12 +641,12 @@ class HealthSyncDashboardCard extends HTMLElement {
   _captureHeartRate() {
     const state = this._state("heart_rate");
     const value = Number(state?.state);
-    if (!Number.isFinite(value)) return;
-    const rawTime = state.last_changed || state.last_updated;
+    if (!this._isValidHeartRate(value)) return;
+    const rawTime = state.last_reported || state.last_updated || state.last_changed;
     const parsedTime = rawTime ? new Date(rawTime).getTime() : Date.now();
     const time = Number.isFinite(parsedTime) ? parsedTime : Date.now();
     const last = this._liveHeartHistory[this._liveHeartHistory.length - 1];
-    if (!last || last.v !== value) this._liveHeartHistory.push({ t: time, v: value });
+    if (!last || last.v !== value || last.t !== time) this._liveHeartHistory.push({ t: time, v: value });
     const cutoff = Date.now() - 86400000;
     this._liveHeartHistory = this._liveHeartHistory.filter((point) => point.t >= cutoff);
   }
@@ -725,13 +727,14 @@ class HealthSyncDashboardCard extends HTMLElement {
   }
 
   _heartChart() {
-    const points=this._historyPoints("heart_rate").filter((p)=>p.t>=Date.now()-86400000).sort((a,b)=>a.t-b.t);
+    const now=Date.now(),start=now-86400000;
+    const points=this._historyPoints("heart_rate").filter((p)=>p.t>=start&&p.t<=now+60000&&this._isValidHeartRate(p.v)).sort((a,b)=>a.t-b.t);
     if (!points.length) return "";
     // Use the same coordinate system as the activity chart so axes, labels,
     // markers and tooltips have the same visible size in both expanded blocks.
     const width=560,height=210,left=40,right=42,top=12,bottom=32,plotW=width-left-right,plotH=height-top-bottom;
     const values=points.map((p)=>p.v),min=Math.max(30,Math.floor(Math.min(...values)/10)*10-10),max=Math.max(min+20,Math.ceil(Math.max(...values)/10)*10+10);
-    const start=Date.now()-86400000,end=Date.now();
+    const end=now;
     const current=points[points.length-1],currentY=top+plotH-(current.v-min)/(max-min)*plotH;
     const hasHistory=points.length>1;
     const measured=points.map((point)=>({x:Math.max(left,Math.min(left+plotW,left+(point.t-start)/(end-start)*plotW)),y:top+plotH-(point.v-min)/(max-min)*plotH}));
@@ -749,6 +752,10 @@ class HealthSyncDashboardCard extends HTMLElement {
   _heartTracePath(points) {
     if (!points.length) return "";
     return points.map((point,index)=>`${index?"L":"M"} ${point.x},${point.y}`).join(" ");
+  }
+
+  _isValidHeartRate(value) {
+    return Number.isFinite(value) && value >= 25 && value <= 250;
   }
 
   _heartMarker(point,x,y,width) {

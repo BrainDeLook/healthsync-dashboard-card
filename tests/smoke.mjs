@@ -150,10 +150,14 @@ assert.match(card.shadowRoot.innerHTML, /data-current-only="true"/);
 card._render = interactionRender;
 card._history["sensor.healthsync_heart_rate"] = [
   { t: Date.now() - 7200000, v: 84, a: {} },
+  { t: Date.now() - 5400000, v: 0, a: {} },
   { t: Date.now() - 3600000, v: 100, a: {} },
 ];
 card._render();
+assert.equal(card._isValidHeartRate(0), false);
+assert.equal(card._isValidHeartRate(84), true);
 assert.match(card.shadowRoot.innerHTML, /data-current-only="false"/);
+assert.doesNotMatch(card.shadowRoot.innerHTML, />0 bpm<\/text>/);
 assert.doesNotMatch(card.shadowRoot.innerHTML, /class="heart-point"/);
 assert.match(card.shadowRoot.innerHTML, /class="chart-hit"/);
 assert.match(card.shadowRoot.innerHTML, /data-interpolation="linear"/);
