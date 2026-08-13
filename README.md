@@ -15,14 +15,15 @@ integration's native sensors and Recorder history without external frontend depe
 - Automatic discovery of standard HealthSync entities
 - Native Home Assistant graphical card editor with manual entity overrides
 - Independent visibility switches for every metric tile
-- Current steps, active calories, heart rate, HRV and sleep summary
+- Current steps, active/resting calories, heart rate, HRV and sleep summary
+- HealthSync 0.12+ tiles for flights climbed, exercise time, walking/running distance, VO₂ max and weight
 - Fell-asleep and wake-up times
 - Step-goal progress bar
 - Independent step and calorie scales in the activity chart
-- Point-to-point 24-hour heart-rate chart with receipt-time tooltips
+- Point-to-point 24-hour heart-rate chart using HealthSync's accurate hourly statistics when available
 - Sleep-stage chart built from `deep_minutes`, `core_minutes`, `rem_minutes` and `awake_minutes`
 - Separate Workouts tab for the latest workout and the recent workout log
-- Automatic discovery of all workout sensors added in HealthSync `0.9.0`
+- Automatic discovery of the individually named workout entities and per-activity icons from HealthSync `0.11.0`–`0.14.0`
 - Optional `show_workouts_tab` switch in the graphical editor and YAML
 - Compact responsive layout for Masonry and Sections dashboards
 - English and Russian interface
@@ -33,8 +34,8 @@ integration's native sensors and Recorder history without external frontend depe
 - [mannotfood/healthsync](https://github.com/mannotfood/healthsync), synced at least once
 - HACS for the recommended installation method
 
-The card supports the HealthSync entities introduced by integration version `0.6.0`
-and the workout entities added in `0.9.0`.
+The complete feature set targets HealthSync `0.14.0`. Older entities remain supported,
+including the legacy `Recent workouts` sensor used before HealthSync `0.11.0`.
 
 ## Install with HACS as a custom repository
 
@@ -77,6 +78,12 @@ show_heart_metric: true
 show_hrv_metric: true
 show_sleep_onset_metric: true
 show_sleep_wake_metric: true
+show_flights_metric: true
+show_exercise_metric: true
+show_resting_energy_metric: true
+show_distance_metric: true
+show_vo2_max_metric: true
+show_weight_metric: true
 ```
 
 Standard HealthSync entity IDs are discovered automatically. Renamed entities can be
@@ -92,20 +99,40 @@ entities:
   sleep_duration: sensor.healthsync_sleep_last_night
   sleep_onset: sensor.healthsync_fell_asleep
   sleep_wake: sensor.healthsync_woke_up
+  flights_climbed: sensor.healthsync_flights_climbed_today
+  exercise_time: sensor.healthsync_exercise_time_today
+  resting_energy: sensor.healthsync_resting_energy_today
+  distance: sensor.healthsync_walking_running_distance_today
+  vo2_max: sensor.healthsync_vo2_max
+  weight: sensor.healthsync_weight
   last_sync: sensor.healthsync_last_sync
   last_workout_type: sensor.healthsync_workouts_last_workout_type
   last_workout_duration: sensor.healthsync_workouts_last_workout_duration
   last_workout_distance: sensor.healthsync_workouts_last_workout_distance
   last_workout_calories: sensor.healthsync_workouts_last_workout_calories
-  recent_workouts: sensor.healthsync_workouts_recent_workouts
+  # Optional manual overrides for the progressively created workout slots:
+  workout_1: sensor.healthsync_workouts_running_11_08_2026_11_55
 ```
 
 ## Workouts
 
-HealthSync `0.9.0` exposes the latest workout type, duration, distance and calories,
-plus up to ten entries in the `workouts` attribute of the Recent workouts sensor.
-The card displays them in a dedicated tab. The integration's `Workout completed`
-event entity remains available for Home Assistant automations and Logbook entries.
+HealthSync `0.11.0+` creates up to ten individually named recent-workout entities.
+The card detects those entities from their workout attributes, shows each activity's
+native icon, and opens the exact entity when selected. The removed pre-`0.11.0`
+`Recent workouts` attribute sensor is still accepted as a fallback.
+
+The integration's `Workout completed` event entity remains available for Home
+Assistant automations and the unlimited Logbook history.
+
+## Heart-rate history
+
+HealthSync `0.13.0+` imports accurately dated hourly min/mean/max statistics for
+heart rate. The card requests the hourly mean through Home Assistant's Recorder
+statistics API and prefers it over raw state changes, which are timestamped at sync
+time. If statistics are unavailable, the card falls back to ordinary Recorder history.
+Invalid placeholder values outside `25–250 bpm` are ignored. Dotted extensions mark
+the parts of the 24-hour window before the first and after the last available reading;
+they are not treated as measured data.
 
 ## Sleep history
 

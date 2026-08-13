@@ -23,7 +23,8 @@
 - Крупные подсказки со временем получения измерения
 - График фаз сна из атрибутов `deep_minutes`, `core_minutes`, `rem_minutes` и `awake_minutes`
 - Отдельная вкладка тренировок с последней тренировкой и журналом недавних тренировок
-- Автоматическое обнаружение всех workout-сенсоров из HealthSync `0.9.0`
+- Автоматическое обнаружение отдельных сущностей тренировок и их иконок из HealthSync `0.11.0`–`0.14.0`
+- Новые плитки HealthSync `0.12.0`: этажи, упражнения, энергия покоя, дистанция, VO₂ max и вес
 - Переключатель `show_workouts_tab` в графическом редакторе и YAML
 - Компактная адаптивная раскладка для Masonry и Sections
 - Русский и английский интерфейс
@@ -34,8 +35,8 @@
 - [mannotfood/healthsync](https://github.com/mannotfood/healthsync) после хотя бы одной синхронизации
 - HACS для рекомендуемой установки
 
-Карточка поддерживает сущности HealthSync начиная с версии интеграции `0.6.0`,
-включая сущности тренировок, добавленные в `0.9.0`.
+Полный набор возможностей рассчитан на HealthSync `0.14.0`. Старые сущности,
+включая удалённый в `0.11.0` сенсор `Recent workouts`, остаются совместимыми.
 
 ## Установка через HACS как пользовательский репозиторий
 
@@ -77,6 +78,12 @@ show_heart_metric: true
 show_hrv_metric: true
 show_sleep_onset_metric: true
 show_sleep_wake_metric: true
+show_flights_metric: true
+show_exercise_metric: true
+show_resting_energy_metric: true
+show_distance_metric: true
+show_vo2_max_metric: true
+show_weight_metric: true
 ```
 
 Стандартные сущности определяются автоматически. После переименования их можно выбрать
@@ -92,26 +99,51 @@ entities:
   sleep_duration: sensor.healthsync_sleep_last_night
   sleep_onset: sensor.healthsync_fell_asleep
   sleep_wake: sensor.healthsync_woke_up
+  flights_climbed: sensor.healthsync_flights_climbed_today
+  exercise_time: sensor.healthsync_exercise_time_today
+  resting_energy: sensor.healthsync_resting_energy_today
+  distance: sensor.healthsync_walking_running_distance_today
+  vo2_max: sensor.healthsync_vo2_max
+  weight: sensor.healthsync_weight
   last_sync: sensor.healthsync_last_sync
   last_workout_type: sensor.healthsync_workouts_last_workout_type
   last_workout_duration: sensor.healthsync_workouts_last_workout_duration
   last_workout_distance: sensor.healthsync_workouts_last_workout_distance
   last_workout_calories: sensor.healthsync_workouts_last_workout_calories
-  recent_workouts: sensor.healthsync_workouts_recent_workouts
+  # Необязательная ручная замена одной из новых сущностей тренировок:
+  workout_1: sensor.healthsync_workouts_running_11_08_2026_11_55
 ```
 
 ## Тренировки
 
-HealthSync `0.9.0` предоставляет тип, длительность, дистанцию и калории последней
-тренировки, а также до десяти записей в атрибуте `workouts` сущности недавних
-тренировок. Карточка показывает их на отдельной вкладке. Event-сущность
-`Workout completed` остаётся доступной для автоматизаций и журнала Home Assistant.
+HealthSync `0.11.0+` создаёт до десяти отдельных сущностей недавних тренировок.
+Карточка находит их по атрибутам, отображает иконку конкретного вида активности
+и открывает именно выбранную сущность. Старый атрибут `workouts` поддерживается
+как резервный источник. Event-сущность `Workout completed` остаётся доступной
+для автоматизаций и полной истории в журнале Home Assistant.
 
 ## История сна
 
 HealthSync хранит фазы сна в атрибутах `sensor.healthsync_sleep_last_night`.
 Карточка загружает историю Recorder вместе с атрибутами и переводит минуты фаз в часы.
 Глубина истории зависит от настроек хранения Recorder.
+
+## Поддержка HealthSync 0.14.0
+
+Карточка автоматически отображает новые показатели интеграции: пройденные этажи,
+время упражнений, энергию покоя, дистанцию ходьбы и бега, VO₂ max и вес. Для каждой
+новой плитки предусмотрен отдельный переключатель в графическом редакторе.
+
+Начиная с HealthSync `0.11.0`, недавние тренировки представлены отдельными
+сущностями. Карточка автоматически находит до десяти таких сущностей, показывает
+иконку конкретного вида активности и открывает выбранную тренировку. Старый сенсор
+`Recent workouts` по-прежнему поддерживается как резервный вариант.
+
+В HealthSync `0.13.0+` точная история пульса записывается в почасовую статистику
+Recorder. Карточка использует эти данные в первую очередь, а обычную историю — как
+резервный источник. Технические значения вне диапазона `25–250 bpm` игнорируются.
+Пунктирные продолжения показывают промежутки до первого и после последнего
+доступного измерения и не считаются реальными данными.
 
 ## Проверка
 

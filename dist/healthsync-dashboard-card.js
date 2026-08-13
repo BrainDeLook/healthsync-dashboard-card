@@ -1,14 +1,16 @@
-/* HealthSync Dashboard Card v0.2.3
+/* HealthSync Dashboard Card v0.3.0
  * A dependency-free Lovelace card for mannotfood/healthsync.
  * MIT License
  */
 
-const HS_VERSION = "0.2.3";
+const HS_VERSION = "0.3.0";
+const HS_WORKOUT_SLOTS = Array.from({ length: 10 }, (_, index) => `workout_${index + 1}`);
 const HS_METRICS = [
   "last_sync", "steps", "active_calories", "heart_rate",
   "heart_rate_variability", "sleep_duration", "sleep_onset", "sleep_wake",
+  "flights_climbed", "exercise_time", "resting_energy", "distance", "vo2_max", "weight",
   "last_workout_type", "last_workout_duration", "last_workout_distance",
-  "last_workout_calories", "recent_workouts",
+  "last_workout_calories", "recent_workouts", ...HS_WORKOUT_SLOTS,
 ];
 const HS_ENTITY_CANDIDATES = {
   last_sync: ["sensor.healthsync_last_sync"],
@@ -19,11 +21,18 @@ const HS_ENTITY_CANDIDATES = {
   sleep_duration: ["sensor.healthsync_sleep_last_night"],
   sleep_onset: ["sensor.healthsync_fell_asleep"],
   sleep_wake: ["sensor.healthsync_woke_up"],
+  flights_climbed: ["sensor.healthsync_flights_climbed_today"],
+  exercise_time: ["sensor.healthsync_exercise_time_today"],
+  resting_energy: ["sensor.healthsync_resting_energy_today"],
+  distance: ["sensor.healthsync_walking_running_distance_today"],
+  vo2_max: ["sensor.healthsync_vo2_max"],
+  weight: ["sensor.healthsync_weight"],
   last_workout_type: ["sensor.healthsync_last_workout_type", "sensor.healthsync_workouts_last_workout_type"],
   last_workout_duration: ["sensor.healthsync_last_workout_duration", "sensor.healthsync_workouts_last_workout_duration"],
   last_workout_distance: ["sensor.healthsync_last_workout_distance", "sensor.healthsync_workouts_last_workout_distance"],
   last_workout_calories: ["sensor.healthsync_last_workout_calories", "sensor.healthsync_workouts_last_workout_calories"],
   recent_workouts: ["sensor.healthsync_recent_workouts", "sensor.healthsync_workouts_recent_workouts"],
+  ...Object.fromEntries(HS_WORKOUT_SLOTS.map((metric) => [metric, []])),
 };
 const HS_ENTITY_SUFFIXES = {
   last_sync: ["healthsync_last_sync", "last_sync"],
@@ -34,11 +43,18 @@ const HS_ENTITY_SUFFIXES = {
   sleep_duration: ["healthsync_sleep_last_night", "sleep_last_night"],
   sleep_onset: ["healthsync_fell_asleep", "fell_asleep"],
   sleep_wake: ["healthsync_woke_up", "woke_up"],
+  flights_climbed: ["healthsync_flights_climbed_today", "flights_climbed_today"],
+  exercise_time: ["healthsync_exercise_time_today", "exercise_time_today"],
+  resting_energy: ["healthsync_resting_energy_today", "resting_energy_today"],
+  distance: ["healthsync_walking_running_distance_today", "walking_running_distance_today", "distance_walking_running_today"],
+  vo2_max: ["healthsync_vo2_max", "vo2_max"],
+  weight: ["healthsync_weight", "weight"],
   last_workout_type: ["healthsync_last_workout_type", "healthsync_workouts_last_workout_type", "last_workout_type"],
   last_workout_duration: ["healthsync_last_workout_duration", "healthsync_workouts_last_workout_duration", "last_workout_duration"],
   last_workout_distance: ["healthsync_last_workout_distance", "healthsync_workouts_last_workout_distance", "last_workout_distance"],
   last_workout_calories: ["healthsync_last_workout_calories", "healthsync_workouts_last_workout_calories", "last_workout_calories"],
   recent_workouts: ["healthsync_recent_workouts", "healthsync_workouts_recent_workouts", "recent_workouts"],
+  ...Object.fromEntries(HS_WORKOUT_SLOTS.map((metric) => [metric, []])),
 };
 
 const HS_TRANSLATIONS = {
@@ -47,6 +63,8 @@ const HS_TRANSLATIONS = {
     noDataHint: "Sync the HealthSync app once, or select entities in the card configuration.",
     activity: "Activity · 7 days", sleep: "Sleep stages · 7 days", heart: "Heart rate · 24 hours",
     steps: "Steps", calories: "Active calories", sleepDuration: "Sleep",
+    flightsClimbed: "Flights climbed", exerciseTime: "Exercise time", restingEnergy: "Resting energy",
+    distance: "Walking + running", vo2Max: "VO₂ max", weight: "Weight",
     deep: "Deep", core: "Core", rem: "REM", awake: "Awake",
     heartRate: "Heart rate", hrv: "HRV", fellAsleep: "Fell asleep", wokeUp: "Woke up", today: "Today",
     switchChart: "Switch chart",
@@ -54,9 +72,12 @@ const HS_TRANSLATIONS = {
     workoutDuration: "Duration", workoutDistance: "Distance", workoutCalories: "Calories",
     recentWorkouts: "Recent workouts", noWorkouts: "No workouts received yet",
     started: "Started", showWorkout: "Open workout entity",
-    historyUnavailable: "History is unavailable. Current values will keep working.", source: "HealthSync", received: "Received",
+    historyUnavailable: "History is unavailable. Current values will keep working.", source: "HealthSync", received: "Received", recorded: "Recorded hour",
   },
   ru: {
+    recorded: "Час измерения",
+    flightsClimbed: "Этажи", exerciseTime: "Упражнения", restingEnergy: "Энергия покоя",
+    distance: "Ходьба + бег", vo2Max: "VO₂ max", weight: "Вес",
     title: "HealthSync", synced: "Синхронизация", noData: "Сенсоры HealthSync не найдены",
     noDataHint: "Выполните первую синхронизацию в приложении HealthSync или выберите сущности в настройках карточки.",
     activity: "Активность · 7 дней", sleep: "Фазы сна · 7 дней", heart: "Пульс · 24 часа",
@@ -82,14 +103,26 @@ const HS_EDITOR_LABELS = {
     show_steps_metric: "Steps", show_calories_metric: "Active calories",
     show_sleep_metric: "Sleep", show_heart_metric: "Heart rate", show_hrv_metric: "HRV",
     show_sleep_onset_metric: "Fell asleep", show_sleep_wake_metric: "Woke up",
+    show_flights_metric: "Flights climbed", show_exercise_metric: "Exercise time",
+    show_resting_energy_metric: "Resting energy", show_distance_metric: "Walking + running distance",
+    show_vo2_max_metric: "VO₂ max", show_weight_metric: "Weight",
     last_sync: "Last synchronization", steps: "Steps", active_calories: "Active calories",
     sleep_duration: "Sleep last night", sleep_onset: "Fell asleep", sleep_wake: "Woke up",
     heart_rate: "Heart rate", heart_rate_variability: "Heart-rate variability",
+    flights_climbed: "Flights climbed today", exercise_time: "Exercise time today",
+    resting_energy: "Resting energy today", distance: "Walking + running distance today",
+    vo2_max: "VO₂ max", weight: "Weight",
     last_workout_type: "Last workout type", last_workout_duration: "Last workout duration",
     last_workout_distance: "Last workout distance", last_workout_calories: "Last workout calories",
     recent_workouts: "Recent workouts",
   },
   ru: {
+    show_flights_metric: "Этажи", show_exercise_metric: "Время упражнений",
+    show_resting_energy_metric: "Энергия покоя", show_distance_metric: "Дистанция ходьбы и бега",
+    show_vo2_max_metric: "VO₂ max", show_weight_metric: "Вес",
+    flights_climbed: "Этажи за сегодня", exercise_time: "Упражнения за сегодня",
+    resting_energy: "Энергия покоя за сегодня", distance: "Дистанция ходьбы и бега",
+    vo2_max: "VO₂ max", weight: "Вес",
     title: "Заголовок", language: "Язык",
     days: "Период истории", step_goal: "Дневная цель шагов", calorie_goal: "Дневная цель активных калорий",
     show_activity: "Показывать график активности", show_sleep: "Показывать график сна",
@@ -118,6 +151,7 @@ class HealthSyncDashboardCard extends HTMLElement {
     this._loadingHistory = false;
     this._renderSignature = "";
     this._historyDataSignature = "";
+    this._statistics = {};
     this._liveHeartHistory = [];
     this._expandedChart = null;
     this._chartStateKey = "";
@@ -140,6 +174,12 @@ class HealthSyncDashboardCard extends HTMLElement {
       show_hrv_metric: true,
       show_sleep_onset_metric: true,
       show_sleep_wake_metric: true,
+      show_flights_metric: true,
+      show_exercise_metric: true,
+      show_resting_energy_metric: true,
+      show_distance_metric: true,
+      show_vo2_max_metric: true,
+      show_weight_metric: true,
       step_goal: 10000,
       calorie_goal: 600,
       entities: {},
@@ -173,6 +213,9 @@ class HealthSyncDashboardCard extends HTMLElement {
       show_steps_metric: true, show_calories_metric: true, show_sleep_metric: true,
       show_heart_metric: true, show_hrv_metric: true,
       show_sleep_onset_metric: true, show_sleep_wake_metric: true,
+      show_flights_metric: true, show_exercise_metric: true,
+      show_resting_energy_metric: true, show_distance_metric: true,
+      show_vo2_max_metric: true, show_weight_metric: true,
       entities: {},
     };
   }
@@ -191,6 +234,22 @@ class HealthSyncDashboardCard extends HTMLElement {
       const match = Object.keys(states).find((entityId) => entityId.startsWith("sensor.") && suffixes.some((suffix) => entityId.slice(7) === suffix || entityId.endsWith(`_${suffix}`)));
       if (match) entities[metric] = match;
     }
+    const assigned = new Set(Object.values(entities));
+    const workoutSlots = Object.entries(states)
+      .filter(([entityId, state]) => {
+        if (!entityId.startsWith("sensor.") || assigned.has(entityId)) return false;
+        const attributes = state?.attributes || {};
+        return Boolean(attributes.started_at || attributes.ended_at)
+          && ("duration_min" in attributes || "distance_m" in attributes || "calories" in attributes);
+      })
+      .sort(([, a], [, b]) => {
+        const aTime = new Date(a.attributes?.started_at || a.last_updated || 0).getTime();
+        const bTime = new Date(b.attributes?.started_at || b.last_updated || 0).getTime();
+        return bTime - aTime;
+      });
+    workoutSlots.slice(0, HS_WORKOUT_SLOTS.length).forEach(([entityId], index) => {
+      entities[HS_WORKOUT_SLOTS[index]] = entityId;
+    });
     return entities;
   }
 
@@ -241,6 +300,12 @@ class HealthSyncDashboardCard extends HTMLElement {
             { name: "show_hrv_metric", default: true, selector: { boolean: {} } },
             { name: "show_sleep_onset_metric", default: true, selector: { boolean: {} } },
             { name: "show_sleep_wake_metric", default: true, selector: { boolean: {} } },
+            { name: "show_flights_metric", default: true, selector: { boolean: {} } },
+            { name: "show_exercise_metric", default: true, selector: { boolean: {} } },
+            { name: "show_resting_energy_metric", default: true, selector: { boolean: {} } },
+            { name: "show_distance_metric", default: true, selector: { boolean: {} } },
+            { name: "show_vo2_max_metric", default: true, selector: { boolean: {} } },
+            { name: "show_weight_metric", default: true, selector: { boolean: {} } },
           ],
         },
         {
@@ -249,7 +314,7 @@ class HealthSyncDashboardCard extends HTMLElement {
           schema: entityFields,
         },
       ],
-      computeLabel: (schema) => labels[schema.name] || schema.name,
+      computeLabel: (schema) => labels[schema.name] || (/^workout_\d+$/.test(schema.name) ? `${lang === "ru" ? "Тренировка" : "Workout"} ${schema.name.slice(8)}` : schema.name),
       computeHelper: () => undefined,
       assertConfig: (config) => {
         if (config.entities !== undefined && (!config.entities || typeof config.entities !== "object" || Array.isArray(config.entities))) {
@@ -393,7 +458,8 @@ class HealthSyncDashboardCard extends HTMLElement {
       .workout-stat span { display:block; margin-top:3px; color:var(--secondary-text-color); font-size:10px; }
       .workout-list-title { margin:14px 2px 7px; font-size:13px; font-weight:750; }
       .workout-list { display:grid; gap:7px; }
-      .workout-row { appearance:none; width:100%; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:center; padding:10px 11px; border:1px solid var(--divider-color); border-radius:11px; background:transparent; color:inherit; font:inherit; text-align:left; cursor:pointer; }
+      .workout-row { appearance:none; width:100%; display:grid; grid-template-columns:24px minmax(0,1fr) auto; gap:8px; align-items:center; padding:10px 11px; border:1px solid var(--divider-color); border-radius:11px; background:transparent; color:inherit; font:inherit; text-align:left; cursor:pointer; }
+      .workout-row>ha-icon { width:20px; height:20px; color:var(--hb-orange); }
       .workout-row:hover { border-color:color-mix(in srgb,var(--hb-orange) 50%,var(--divider-color)); }
       .workout-row strong { display:block; font-size:13px; text-transform:capitalize; }
       .workout-row small { display:block; margin-top:3px; color:var(--secondary-text-color); font-size:10px; }
@@ -442,7 +508,7 @@ class HealthSyncDashboardCard extends HTMLElement {
       this.shadowRoot.innerHTML = `${this._styles()}<ha-card><div class="empty"><ha-icon icon="mdi:heart-pulse"></ha-icon><h2>${this._t("noData")}</h2><p>${this._t("noDataHint")}</p></div></ha-card>`;
       return;
     }
-    const hasWorkoutData = ["last_workout_type", "last_workout_duration", "last_workout_distance", "last_workout_calories", "recent_workouts"].some((metric) => this._state(metric));
+    const hasWorkoutData = ["last_workout_type", "last_workout_duration", "last_workout_distance", "last_workout_calories", "recent_workouts", ...HS_WORKOUT_SLOTS].some((metric) => this._state(metric));
     const showWorkoutTab = this.config.show_workouts_tab && hasWorkoutData;
     if (!showWorkoutTab && this._activeTab === "workouts") this._activeTab = "overview";
     const sync = this._state("last_sync")?.state;
@@ -457,6 +523,12 @@ class HealthSyncDashboardCard extends HTMLElement {
       this.config.show_hrv_metric ? this._metric("heart_rate_variability", this._t("hrv"), "mdi:waves", "green") : "",
       this.config.show_sleep_onset_metric ? this._metric("sleep_onset", this._t("fellAsleep"), "mdi:weather-night", "indigo") : "",
       this.config.show_sleep_wake_metric ? this._metric("sleep_wake", this._t("wokeUp"), "mdi:weather-sunset-up", "cyan") : "",
+      this.config.show_flights_metric ? this._metric("flights_climbed", this._t("flightsClimbed"), "mdi:stairs", "blue") : "",
+      this.config.show_exercise_metric ? this._metric("exercise_time", this._t("exerciseTime"), "mdi:timer-outline", "green") : "",
+      this.config.show_resting_energy_metric ? this._metric("resting_energy", this._t("restingEnergy"), "mdi:fire", "orange") : "",
+      this.config.show_distance_metric ? this._metric("distance", this._t("distance"), "mdi:map-marker-distance", "cyan") : "",
+      this.config.show_vo2_max_metric ? this._metric("vo2_max", this._t("vo2Max"), "mdi:lungs", "red") : "",
+      this.config.show_weight_metric ? this._metric("weight", this._t("weight"), "mdi:scale-bathroom", "indigo") : "",
     ].filter(Boolean).join("");
     const hasActivityChart = this.config.show_activity && (this._entity("steps") || this._entity("active_calories"));
     const hasSleepChart = this.config.show_sleep && this._entity("sleep_duration");
@@ -513,8 +585,9 @@ class HealthSyncDashboardCard extends HTMLElement {
     const startedAt = typeState?.attributes?.started_at;
     const started = startedAt ? this._formatWorkoutDate(startedAt) : "";
     const latestEntity = this._entity("last_workout_type") || this._entity("recent_workouts") || "";
+    const latestIcon = typeState?.attributes?.icon || "mdi:run-fast";
     const latest = `<button type="button" class="workout-latest"${latestEntity ? ` data-entity="${this._escape(latestEntity)}" aria-label="${this._escape(this._t("showWorkout"))}"` : ""}>
-      <div class="workout-head"><ha-icon icon="mdi:run-fast"></ha-icon><div><div class="workout-kicker">${this._t("latestWorkout")}</div><div class="workout-name">${this._escape(type)}</div></div>${started ? `<div class="workout-time">${this._t("started")}<br>${this._escape(started)}</div>` : ""}</div>
+      <div class="workout-head"><ha-icon icon="${this._escape(latestIcon)}"></ha-icon><div><div class="workout-kicker">${this._t("latestWorkout")}</div><div class="workout-name">${this._escape(type)}</div></div>${started ? `<div class="workout-time">${this._t("started")}<br>${this._escape(started)}</div>` : ""}</div>
       <div class="workout-stats">
         ${this._workoutStat("last_workout_duration", this._t("workoutDuration"))}
         ${this._workoutStat("last_workout_distance", this._t("workoutDistance"))}
@@ -522,9 +595,15 @@ class HealthSyncDashboardCard extends HTMLElement {
       </div>
     </button>`;
     const recentState = this._state("recent_workouts");
-    const records = Array.isArray(recentState?.attributes?.workouts) ? recentState.attributes.workouts.filter((item) => item && typeof item === "object") : [];
+    const legacyRecords = Array.isArray(recentState?.attributes?.workouts) ? recentState.attributes.workouts.filter((item) => item && typeof item === "object") : [];
+    const slotRecords = HS_WORKOUT_SLOTS.map((metric) => {
+      const state = this._state(metric);
+      if (!state || ["unknown", "unavailable", "none", ""].includes(state.state)) return null;
+      return { workout_type: state.state, ...state.attributes, _entity_id: this._entity(metric), _icon: state.attributes?.icon || "mdi:run" };
+    }).filter(Boolean);
+    const records = slotRecords.length ? slotRecords : legacyRecords;
     const recentEntity = this._entity("recent_workouts") || latestEntity;
-    const rows = records.map((record) => this._workoutRow(record, recentEntity)).join("");
+    const rows = records.map((record) => this._workoutRow(record, record._entity_id || recentEntity)).join("");
     return `<div class="tab-panel workouts-panel" role="tabpanel" data-tab-panel="workouts"${hidden ? " hidden" : ""}>${latest}<div class="workout-list-title">${this._t("recentWorkouts")}</div>${rows ? `<div class="workout-list">${rows}</div>` : `<div class="workout-empty">${this._t("noWorkouts")}</div>`}</div>`;
   }
 
@@ -541,12 +620,13 @@ class HealthSyncDashboardCard extends HTMLElement {
       this._plainWorkoutValue(record.distance_m, "m"),
       this._plainWorkoutValue(record.calories, "kcal"),
     ].filter(Boolean).join(" · ");
-    return `<button type="button" class="workout-row"${entityId ? ` data-entity="${this._escape(entityId)}"` : ""}><span><strong>${this._escape(type)}</strong><small>${this._escape(started || "—")}</small></span><span class="workout-row-meta">${this._escape(details || "—")}</span></button>`;
+    const icon = record._icon || "mdi:run";
+    return `<button type="button" class="workout-row"${entityId ? ` data-entity="${this._escape(entityId)}"` : ""}><ha-icon icon="${this._escape(icon)}"></ha-icon><span><strong>${this._escape(type)}</strong><small>${this._escape(started || "—")}</small></span><span class="workout-row-meta">${this._escape(details || "—")}</span></button>`;
   }
 
   _workoutName(value) {
-    const text = String(value || "").replaceAll("_", " ").trim();
-    return text ? text.charAt(0).toUpperCase() + text.slice(1) : this._t("noWorkouts");
+    const text = String(value || "").replaceAll("_", " ").replace(/([a-z0-9])([A-Z])/g, "$1 $2").trim();
+    return text ? text.replace(/\b\w/g, (letter) => letter.toUpperCase()) : this._t("noWorkouts");
   }
 
   _formatWorkoutDate(raw) {
@@ -618,7 +698,8 @@ class HealthSyncDashboardCard extends HTMLElement {
 
   _historyPoints(metric) {
     const entity = this._entity(metric);
-    const points = entity ? [...(this._history[entity] || [])] : [];
+    const statistics = metric === "heart_rate" && entity ? this._statistics[entity] || [] : [];
+    const points = statistics.length ? [...statistics] : entity ? [...(this._history[entity] || [])] : [];
     if (metric === "heart_rate") points.push(...this._liveHeartHistory);
     const state = this._state(metric);
     const currentValue = Number(state?.state);
@@ -740,12 +821,15 @@ class HealthSyncDashboardCard extends HTMLElement {
     const measured=points.map((point)=>({x:Math.max(left,Math.min(left+plotW,left+(point.t-start)/(end-start)*plotW)),y:top+plotH-(point.v-min)/(max-min)*plotH}));
     const tracePoints=hasHistory?measured:[{x:left,y:currentY},{x:left+plotW,y:currentY}];
     const trace=this._heartTracePath(tracePoints);
+    const firstMeasured=measured[0],lastMeasured=measured[measured.length-1];
+    const gaps=hasHistory ? `<path class="heart-gap" d="M ${left},${firstMeasured.y} L ${firstMeasured.x},${firstMeasured.y} M ${lastMeasured.x},${lastMeasured.y} L ${left+plotW},${lastMeasured.y}" fill="none" stroke="var(--hb-red)" stroke-width="2" stroke-dasharray="4 7" opacity=".28"/>` : "";
     const centerY=top+plotH/2;
     const historyMarkers=hasHistory?points.slice(0,-1).map((point,index)=>this._heartMarker(point,measured[index].x,measured[index].y,width)).join(""):"";
     const currentX=hasHistory?measured[measured.length-1].x:left+plotW;
     const currentMarker=`${this._heartMarker(current,currentX,currentY,width)}<text class="axis" x="${currentX-8}" y="${Math.max(top+10,currentY-9)}" text-anchor="end" style="fill:var(--hb-red)">${current.v.toFixed(0)} bpm</text>`;
     const legend = `<span class="legend"><span><i style="--dot:var(--hb-red)"></i>bpm</span></span>`;
-    const svg = `<svg viewBox="0 0 ${width} ${height}" role="img" data-current-only="${!hasHistory}" data-interpolation="linear">${this._grid(width,height,left,right,top,bottom,max,min)}<line class="heart-center" x1="${left}" x2="${left+plotW}" y1="${centerY}" y2="${centerY}" stroke="var(--secondary-text-color)" stroke-width="1.5" stroke-dasharray="5 7" opacity=".5"/><path class="heart-trace" d="${trace}" fill="none" stroke="var(--hb-red)" stroke-width="3"${hasHistory?"":` stroke-dasharray="10 7"`} stroke-linejoin="round" stroke-linecap="round"/>${historyMarkers}${currentMarker}<text class="axis" x="${left}" y="${height-6}">24h</text><text class="axis" x="${left+plotW}" y="${height-6}" text-anchor="end">${this._t("today")}</text></svg>`;
+    const timeLabels=[0,.25,.5,.75,1].map((ratio)=>{const date=new Date(start+(end-start)*ratio);const label=new Intl.DateTimeFormat(this._lang(),{hour:"2-digit",minute:"2-digit"}).format(date);return `<text class="axis" x="${left+plotW*ratio}" y="${height-6}" text-anchor="${ratio===0?"start":ratio===1?"end":"middle"}">${this._escape(label)}</text>`;}).join("");
+    const svg = `<svg viewBox="0 0 ${width} ${height}" role="img" data-current-only="${!hasHistory}" data-interpolation="linear" data-statistics="${Boolean(this._statistics[this._entity("heart_rate")]?.length)}">${this._grid(width,height,left,right,top,bottom,max,min)}<line class="heart-center" x1="${left}" x2="${left+plotW}" y1="${centerY}" y2="${centerY}" stroke="var(--secondary-text-color)" stroke-width="1.5" stroke-dasharray="5 7" opacity=".5"/>${gaps}<path class="heart-trace" d="${trace}" fill="none" stroke="var(--hb-red)" stroke-width="3"${hasHistory?"":` stroke-dasharray="10 7"`} stroke-linejoin="round" stroke-linecap="round"/>${historyMarkers}${currentMarker}${timeLabels}</svg>`;
     return this._collapsibleChart("heart", this._t("heart"), legend, svg, true);
   }
 
@@ -765,7 +849,7 @@ class HealthSyncDashboardCard extends HTMLElement {
 
   _chartSample(point,x,y,width,valueLabel,className,mark) {
     const time=new Intl.DateTimeFormat(this._lang(),{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}).format(new Date(point.t));
-    const received=`${this._t("received")}: ${time}`;
+    const received=`${this._t(point.a?.statistics ? "recorded" : "received")}: ${time}`;
     const tooltipWidth=220,tooltipHeight=50;
     const tooltipX=x>width-tooltipWidth-12?x-tooltipWidth-11:x+11,tooltipY=y<68?y+12:y-tooltipHeight-10;
     const valueY=19,timeY=41,textX=12;
@@ -803,6 +887,36 @@ class HealthSyncDashboardCard extends HTMLElement {
     this._loadHistory(entities,key);
   }
 
+  async _loadHourlyStatistics(start, end) {
+    const entity = this._entity("heart_rate");
+    if (!entity || typeof this._hass?.callWS !== "function") return false;
+    try {
+      const response = await this._hass.callWS({
+        type: "recorder/statistics_during_period",
+        start_time: start,
+        end_time: end,
+        statistic_ids: [entity],
+        period: "hour",
+        units: {},
+        types: ["mean", "min", "max"],
+      });
+      const rows = Array.isArray(response?.[entity]) ? response[entity] : [];
+      const points = rows.map((row) => {
+        const rawTime = row.start ?? row.end;
+        const numericTime = Number(rawTime);
+        const t = Number.isFinite(numericTime) ? numericTime * (numericTime < 1e12 ? 1000 : 1) : new Date(rawTime).getTime();
+        const v = Number(row.mean ?? row.max ?? row.min);
+        return { t, v, a: { statistics: true, min: row.min, max: row.max } };
+      }).filter((point) => Number.isFinite(point.t) && this._isValidHeartRate(point.v));
+      const previous = JSON.stringify(this._statistics[entity] || []);
+      this._statistics[entity] = points;
+      return previous !== JSON.stringify(points);
+    } catch (error) {
+      console.debug("HealthSync Dashboard Card: hourly statistics unavailable", error);
+      return false;
+    }
+  }
+
   async _loadHistory(entities,key) {
     const hadHistoryError=this._historyError;
     this._loadingHistory=true; this._historyError=false;
@@ -811,6 +925,8 @@ class HealthSyncDashboardCard extends HTMLElement {
       const days=Math.max(2,Math.min(31,Number(this.config.days)||7));
       const start=new Date(Date.now()-days*86400000).toISOString();
       const end=new Date().toISOString();
+      const heartStart=new Date(Date.now()-86400000).toISOString();
+      if (await this._loadHourlyStatistics(heartStart,end)) shouldRender=true;
       const path=`history/period/${encodeURIComponent(start)}?filter_entity_id=${encodeURIComponent(entities.join(","))}&end_time=${encodeURIComponent(end)}`;
       const response=await this._hass.callApi("GET",path);
       const history={};
