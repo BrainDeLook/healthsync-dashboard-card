@@ -14,6 +14,7 @@ integration's native sensors and Recorder history without external frontend depe
 
 - Automatic discovery of standard HealthSync entities
 - Native Home Assistant graphical card editor with manual entity overrides
+- Fast first paint: entity discovery is cached and Recorder history loads after the card is visible
 - Independent visibility switches for every metric tile
 - Current steps, active/resting calories, heart rate, HRV and sleep summary
 - HealthSync 0.12+ tiles for flights climbed, exercise time, walking/running distance, VO₂ max and weight

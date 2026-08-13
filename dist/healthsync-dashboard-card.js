@@ -1,9 +1,9 @@
-/* HealthSync Dashboard Card v0.3.1
+/* HealthSync Dashboard Card v0.3.2
  * A dependency-free Lovelace card for mannotfood/healthsync.
  * MIT License
  */
 
-const HS_VERSION = "0.3.1";
+const HS_VERSION = "0.3.2";
 const HS_WORKOUT_SLOTS = Array.from({ length: 10 }, (_, index) => `workout_${index + 1}`);
 const HS_METRICS = [
   "last_sync", "steps", "active_calories", "heart_rate",
@@ -153,6 +153,11 @@ class HealthSyncDashboardCard extends HTMLElement {
     this._historyDataSignature = "";
     this._statistics = {};
     this._liveHeartHistory = [];
+    this._detectedEntities = {};
+    this._entityDiscoveryAt = 0;
+    this._historyTimer = null;
+    this._historyIdle = false;
+    this._historyScheduledKey = "";
     this._expandedChart = null;
     this._chartStateKey = "";
     this._activeTab = "overview";
@@ -195,6 +200,7 @@ class HealthSyncDashboardCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    this._refreshDetectedEntities();
     this._captureHeartRate();
     const signature = this._relevantStateSignature();
     if (signature !== this._renderSignature) {
@@ -202,6 +208,10 @@ class HealthSyncDashboardCard extends HTMLElement {
       this._render();
     }
     this._scheduleHistory();
+  }
+
+  disconnectedCallback() {
+    this._cancelScheduledHistory();
   }
 
   static getStubConfig() {
@@ -226,16 +236,20 @@ class HealthSyncDashboardCard extends HTMLElement {
 
   static discoverEntities(hass) {
     const states = hass?.states || {};
+    const stateEntries = Object.entries(states);
+    const sensorIds = stateEntries
+      .map(([entityId]) => entityId)
+      .filter((entityId) => entityId.startsWith("sensor."));
     const entities = {};
     for (const metric of HS_METRICS) {
       const exact = HS_ENTITY_CANDIDATES[metric].find((entityId) => states[entityId]);
       if (exact) { entities[metric] = exact; continue; }
       const suffixes = HS_ENTITY_SUFFIXES[metric];
-      const match = Object.keys(states).find((entityId) => entityId.startsWith("sensor.") && suffixes.some((suffix) => entityId.slice(7) === suffix || entityId.endsWith(`_${suffix}`)));
+      const match = sensorIds.find((entityId) => suffixes.some((suffix) => entityId.slice(7) === suffix || entityId.endsWith(`_${suffix}`)));
       if (match) entities[metric] = match;
     }
     const assigned = new Set(Object.values(entities));
-    const workoutSlots = Object.entries(states)
+    const workoutSlots = stateEntries
       .filter(([entityId, state]) => {
         if (!entityId.startsWith("sensor.") || assigned.has(entityId)) return false;
         const attributes = state?.attributes || {};
@@ -341,7 +355,23 @@ class HealthSyncDashboardCard extends HTMLElement {
   _entity(metric) {
     const explicit = this.config?.entities?.[metric];
     if (explicit) return explicit;
-    return HealthSyncDashboardCard.discoverEntities(this._hass)[metric];
+    return this._detectedEntities[metric];
+  }
+
+  _refreshDetectedEntities() {
+    const states = this._hass?.states;
+    if (!states) {
+      this._detectedEntities = {};
+      this._entityDiscoveryAt = 0;
+      return;
+    }
+    const detectedIds = Object.values(this._detectedEntities);
+    const cacheIsFresh = detectedIds.length
+      && Date.now() - this._entityDiscoveryAt < 60000
+      && detectedIds.every((entityId) => states[entityId]);
+    if (cacheIsFresh) return;
+    this._detectedEntities = HealthSyncDashboardCard.discoverEntities(this._hass);
+    this._entityDiscoveryAt = Date.now();
   }
 
   _state(metric) {
@@ -364,7 +394,7 @@ class HealthSyncDashboardCard extends HTMLElement {
     for (const metric of HS_METRICS) {
       const entityId = this._entity(metric) || "";
       const state = entityId ? this._hass.states[entityId] : undefined;
-      values.push(entityId, state?.state ?? "", state?.last_updated ?? "", state?.attributes ?? {});
+      values.push(entityId, state?.state ?? "", state?.last_updated ?? state?.last_changed ?? "");
     }
     return JSON.stringify(values);
   }
@@ -887,7 +917,33 @@ class HealthSyncDashboardCard extends HTMLElement {
     if (!entities.length) return;
     const key=`${entities.join(",")}|${this.config.days}`;
     if (key===this._historyKey && Date.now()-this._historyAt<300000) return;
-    this._loadHistory(entities,key);
+    if (key===this._historyScheduledKey) return;
+    this._cancelScheduledHistory();
+    this._historyScheduledKey=key;
+    const run=()=>{
+      this._historyTimer=null;
+      this._historyIdle=false;
+      this._historyScheduledKey="";
+      this._loadHistory(entities,key);
+    };
+    if (typeof globalThis.requestIdleCallback === "function") {
+      this._historyIdle=true;
+      this._historyTimer=globalThis.requestIdleCallback(run,{timeout:700});
+    } else {
+      this._historyTimer=globalThis.setTimeout(run,0);
+    }
+  }
+
+  _cancelScheduledHistory() {
+    if (this._historyTimer === null) return;
+    if (this._historyIdle && typeof globalThis.cancelIdleCallback === "function") {
+      globalThis.cancelIdleCallback(this._historyTimer);
+    } else {
+      globalThis.clearTimeout(this._historyTimer);
+    }
+    this._historyTimer=null;
+    this._historyIdle=false;
+    this._historyScheduledKey="";
   }
 
   async _loadHourlyStatistics(start, end) {

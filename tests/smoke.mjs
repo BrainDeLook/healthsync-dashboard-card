@@ -248,4 +248,36 @@ assert.equal(renders, 0, "unrelated state changes must not rerender the card");
 card.hass = { ...card._hass, states: { ...healthsyncStates, "sensor.healthsync_heart_rate": { ...healthsyncStates["sensor.healthsync_heart_rate"], state: "73" } } };
 assert.equal(renders, 1, "a HealthSync state change must rerender the card");
 
+const originalDiscoverEntities = Card.discoverEntities;
+let discoveryCalls = 0;
+Card.discoverEntities = function (...args) {
+  discoveryCalls += 1;
+  return originalDiscoverEntities.apply(this, args);
+};
+const largeStates = { ...healthsyncStates };
+for (let index = 0; index < 4000; index += 1) {
+  largeStates[`sensor.unrelated_${index}`] = {
+    state: String(index),
+    last_updated: new Date().toISOString(),
+    attributes: { samples: Array.from({ length: 20 }, (_, sample) => sample + index) },
+  };
+}
+const fastCard = new Card();
+fastCard.setConfig({ language: "en", days: 3 });
+let deferredHistoryCalls = 0;
+const fastHass = {
+  language: "en",
+  states: largeStates,
+  callApi: async () => { deferredHistoryCalls += 1; return []; },
+  callWS: async () => ({}),
+};
+fastCard.hass = fastHass;
+assert.equal(deferredHistoryCalls, 0, "Recorder history must not block the first card render");
+fastCard.hass = { ...fastHass, states: { ...largeStates, "sensor.unrelated_extra": { state: "1", attributes: {} } } };
+fastCard._render();
+assert.equal(discoveryCalls, 1, "entity discovery should be cached across ordinary Home Assistant updates and renders");
+assert.ok(fastCard._relevantStateSignature().length < 3000, "render signature must not serialize large entity attributes");
+fastCard.disconnectedCallback();
+Card.discoverEntities = originalDiscoverEntities;
+
 console.log("Smoke test passed");
