@@ -1,9 +1,9 @@
-/* HealthSync Dashboard Card v0.3.0
+/* HealthSync Dashboard Card v0.3.1
  * A dependency-free Lovelace card for mannotfood/healthsync.
  * MIT License
  */
 
-const HS_VERSION = "0.3.0";
+const HS_VERSION = "0.3.1";
 const HS_WORKOUT_SLOTS = Array.from({ length: 10 }, (_, index) => `workout_${index + 1}`);
 const HS_METRICS = [
   "last_sync", "steps", "active_calories", "heart_rate",
@@ -457,7 +457,10 @@ class HealthSyncDashboardCard extends HTMLElement {
       .workout-stat strong { display:block; overflow:hidden; color:var(--primary-text-color); font-size:15px; text-overflow:ellipsis; white-space:nowrap; }
       .workout-stat span { display:block; margin-top:3px; color:var(--secondary-text-color); font-size:10px; }
       .workout-list-title { margin:14px 2px 7px; font-size:13px; font-weight:750; }
-      .workout-list { display:grid; gap:7px; }
+      .workout-list { display:grid; gap:7px; max-height:260px; overflow-x:hidden; overflow-y:auto; padding-right:4px; scrollbar-gutter:stable; overscroll-behavior:contain; touch-action:pan-y; -webkit-overflow-scrolling:touch; }
+      .workout-list:focus-visible { outline:2px solid var(--primary-color); outline-offset:3px; border-radius:8px; }
+      .workout-list::-webkit-scrollbar { width:6px; }
+      .workout-list::-webkit-scrollbar-thumb { border-radius:99px; background:var(--divider-color); }
       .workout-row { appearance:none; width:100%; display:grid; grid-template-columns:24px minmax(0,1fr) auto; gap:8px; align-items:center; padding:10px 11px; border:1px solid var(--divider-color); border-radius:11px; background:transparent; color:inherit; font:inherit; text-align:left; cursor:pointer; }
       .workout-row>ha-icon { width:20px; height:20px; color:var(--hb-orange); }
       .workout-row:hover { border-color:color-mix(in srgb,var(--hb-orange) 50%,var(--divider-color)); }
@@ -496,7 +499,7 @@ class HealthSyncDashboardCard extends HTMLElement {
       .empty p,.history-error { color:var(--secondary-text-color); font-size:12px; }
       .history-error { margin-top:12px; text-align:center; }
       @container (max-width:600px) { .charts{grid-template-columns:1fr}.chart.wide{grid-column:auto} }
-      @container (max-width:430px) { ha-card{padding:12px}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.user-chip{display:none}.metric{min-height:66px;padding:9px}.chart{padding:10px}.workout-stats{grid-template-columns:1fr}.workout-time{display:none} }
+      @container (max-width:430px) { ha-card{padding:12px}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.user-chip{display:none}.metric{min-height:66px;padding:9px}.chart{padding:10px}.workout-stats{grid-template-columns:1fr}.workout-time{display:none}.workout-list{max-height:220px} }
       @container (max-width:300px) { .metrics{grid-template-columns:1fr}.header{display:block} }
     </style>`;
   }
@@ -604,7 +607,7 @@ class HealthSyncDashboardCard extends HTMLElement {
     const records = slotRecords.length ? slotRecords : legacyRecords;
     const recentEntity = this._entity("recent_workouts") || latestEntity;
     const rows = records.map((record) => this._workoutRow(record, record._entity_id || recentEntity)).join("");
-    return `<div class="tab-panel workouts-panel" role="tabpanel" data-tab-panel="workouts"${hidden ? " hidden" : ""}>${latest}<div class="workout-list-title">${this._t("recentWorkouts")}</div>${rows ? `<div class="workout-list">${rows}</div>` : `<div class="workout-empty">${this._t("noWorkouts")}</div>`}</div>`;
+    return `<div class="tab-panel workouts-panel" role="tabpanel" data-tab-panel="workouts"${hidden ? " hidden" : ""}>${latest}<div class="workout-list-title">${this._t("recentWorkouts")}</div>${rows ? `<div class="workout-list" role="region" tabindex="0" aria-label="${this._escape(this._t("recentWorkouts"))}">${rows}</div>` : `<div class="workout-empty">${this._t("noWorkouts")}</div>`}</div>`;
   }
 
   _workoutStat(metric, label) {

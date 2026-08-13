@@ -24,6 +24,7 @@ integration's native sensors and Recorder history without external frontend depe
 - Sleep-stage chart built from `deep_minutes`, `core_minutes`, `rem_minutes` and `awake_minutes`
 - Separate Workouts tab for the latest workout and the recent workout log
 - Automatic discovery of the individually named workout entities and per-activity icons from HealthSync `0.11.0`–`0.14.0`
+- Compact scrollable recent-workout list instead of expanding the whole card
 - Optional `show_workouts_tab` switch in the graphical editor and YAML
 - Compact responsive layout for Masonry and Sections dashboards
 - English and Russian interface
