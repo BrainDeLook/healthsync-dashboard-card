@@ -288,6 +288,8 @@ assert.equal(exactServiceRequest.data.device_id, "healthsync-device-1");
 card._render();
 assert.match(card.shadowRoot.innerHTML, /data-exact-history="true"/);
 assert.match(card.shadowRoot.innerHTML, /Recorded:/);
+assert.equal(card._historyPoints("heart_rate").at(-1).v, 72, "the current heart-rate state must follow exact historical readings");
+assert.match(card.shadowRoot.innerHTML, />72 bpm<\/text>/, "the graph label must match the current heart-rate tile");
 
 const autoDeviceCard = new Card();
 autoDeviceCard.setConfig({ language: "en" });

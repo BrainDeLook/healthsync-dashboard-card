@@ -1,9 +1,9 @@
-/* HealthSync Dashboard Card v0.5.1
+/* HealthSync Dashboard Card v0.5.2
  * A dependency-free Lovelace card for mannotfood/healthsync.
  * MIT License
  */
 
-const HS_VERSION = "0.5.1";
+const HS_VERSION = "0.5.2";
 const HS_WORKOUT_SLOTS = Array.from({ length: 10 }, (_, index) => `workout_${index + 1}`);
 const HS_METRICS = [
   "last_sync", "steps", "active_calories", "heart_rate",
@@ -842,15 +842,17 @@ class HealthSyncDashboardCard extends HTMLElement {
     const statistics = metric === "heart_rate" && entity ? this._statistics[entity] || [] : [];
     const exact = metric === "heart_rate" ? this._exactHeartHistory : [];
     const points = exact.length ? [...exact] : statistics.length ? [...statistics] : entity ? [...(this._history[entity] || [])] : [];
-    if (metric === "heart_rate" && !exact.length) points.push(...this._liveHeartHistory);
+    if (metric === "heart_rate") points.push(...this._liveHeartHistory);
     const state = this._state(metric);
     const currentValue = Number(state?.state);
     const rawTime=state?.last_reported||state?.last_updated||state?.last_changed;
     const parsedTime=rawTime?new Date(rawTime).getTime():Date.now();
     const currentTime=Number.isFinite(parsedTime)?parsedTime:Date.now();
-    const lastPoint=points[points.length-1];
+    const lastPoint=points
+      .filter((point) => Number.isFinite(point.t) && Number.isFinite(point.v))
+      .sort((a, b) => a.t - b.t).at(-1);
     const receivedAgain=metric === "heart_rate" && Boolean(rawTime) && currentTime > (lastPoint?.t ?? 0);
-    if (!(metric === "heart_rate" && exact.length) && Number.isFinite(currentValue) && (!lastPoint || lastPoint.v !== currentValue || receivedAgain || (metric === "sleep_duration" && lastPoint.t !== currentTime))) {
+    if (Number.isFinite(currentValue) && (!lastPoint || lastPoint.v !== currentValue || receivedAgain || (metric === "sleep_duration" && lastPoint.t !== currentTime))) {
       points.push({ t:currentTime, v:currentValue, a:state.attributes || {} });
     }
     const unique = new Map();
