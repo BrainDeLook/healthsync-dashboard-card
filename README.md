@@ -61,6 +61,9 @@ Minimal YAML:
 type: custom:healthsync-dashboard-card
 ```
 
+In the visual editor, the **Metric tiles** section combines visibility switches
+and drag handles. Drag a row to place that metric in the same position on the card.
+
 Common options:
 
 ```yaml

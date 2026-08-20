@@ -129,19 +129,7 @@ assert.deepEqual(entityPanel.schema.map((field) => field.name), [
   "last_workout_calories", "recent_workouts", "workout_1", "workout_2", "workout_3", "workout_4", "workout_5", "workout_6", "workout_7", "workout_8", "workout_9", "workout_10",
 ]);
 const tilePanel = form.schema.find((field) => field.icon === "mdi:view-grid-outline");
-assert.ok(tilePanel, "the editor should expose individual metric tile switches");
-assert.ok(tilePanel.schema.some((field) => field.name === "show_steps_metric"));
-assert.ok(tilePanel.schema.some((field) => field.name === "show_hrv_metric"));
-assert.ok(tilePanel.schema.some((field) => field.name === "show_sleep_wake_metric"));
-assert.ok(tilePanel.schema.some((field) => field.name === "show_flights_metric"));
-assert.ok(tilePanel.schema.some((field) => field.name === "show_exercise_metric"));
-assert.ok(tilePanel.schema.some((field) => field.name === "show_resting_energy_metric"));
-assert.ok(tilePanel.schema.some((field) => field.name === "show_distance_metric"));
-assert.ok(tilePanel.schema.some((field) => field.name === "show_vo2_max_metric"));
-assert.ok(tilePanel.schema.some((field) => field.name === "show_weight_metric"));
-assert.ok(tilePanel.schema.some((field) => field.name === "show_resting_heart_rate_metric"));
-assert.ok(tilePanel.schema.some((field) => field.name === "show_blood_oxygen_metric"));
-assert.ok(tilePanel.schema.some((field) => field.name === "show_body_mass_index_metric"));
+assert.equal(tilePanel, undefined, "draggable metric switches must not be duplicated in ha-form");
 const sectionPanel = form.schema.find((field) => field.icon === "mdi:view-dashboard-outline");
 assert.ok(sectionPanel.schema.some((field) => field.name === "show_workouts_tab"));
 
@@ -169,15 +157,19 @@ const externalEditorConfig = { ...changedEditorConfig, show_steps_metric: true }
 editor.setConfig(externalEditorConfig);
 assert.strictEqual(editor._form, editorForm, "an external config update must reuse the existing form");
 assert.deepEqual(editorForm.data, externalEditorConfig);
-assert.match(editor.shadowRoot.innerHTML, /Tile order/);
+assert.match(editor.shadowRoot.innerHTML, /Metric tiles/);
 editor._moveTile("active_calories", -1);
 assert.equal(editor.lastEvent.detail.config.tile_order[0], "active_calories");
 assert.equal(editor.lastEvent.detail.config.tile_order[1], "steps");
 const reorderedEditorConfig = editor.lastEvent.detail.config;
 editor.setConfig(reorderedEditorConfig);
 assert.strictEqual(editor._form, editorForm, "changing tile order must preserve the editor form");
-editorForm.listeners["value-changed"]({ detail: { value: { ...externalEditorConfig, show_hrv_metric: false } } });
+editor._setTileVisibility("steps", false);
+assert.equal(editor.lastEvent.detail.config.show_steps_metric, false, "a custom tile switch must update its existing visibility option");
+editor.setConfig(editor.lastEvent.detail.config);
+editorForm.listeners["value-changed"]({ detail: { value: { type: externalEditorConfig.type, entities: {}, show_hrv_metric: false } } });
 assert.deepEqual(editor.lastEvent.detail.config.tile_order, reorderedEditorConfig.tile_order, "form changes must preserve custom tile order");
+assert.equal(editor.lastEvent.detail.config.show_steps_metric, false, "ha-form changes must preserve custom tile visibility switches");
 
 const card = new Card();
 card.setConfig({ language: "en", step_goal: 10000, days: 3 });

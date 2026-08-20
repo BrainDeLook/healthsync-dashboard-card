@@ -1,9 +1,9 @@
-/* HealthSync Dashboard Card v0.5.0
+/* HealthSync Dashboard Card v0.5.1
  * A dependency-free Lovelace card for mannotfood/healthsync.
  * MIT License
  */
 
-const HS_VERSION = "0.5.0";
+const HS_VERSION = "0.5.1";
 const HS_WORKOUT_SLOTS = Array.from({ length: 10 }, (_, index) => `workout_${index + 1}`);
 const HS_METRICS = [
   "last_sync", "steps", "active_calories", "heart_rate",
@@ -426,26 +426,6 @@ class HealthSyncDashboardCard extends HTMLElement {
           ],
         },
         { name: "device_id", selector: { device: { filter: { integration: "healthsync" } } } },
-        {
-          type: "expandable", name: "", flatten: true,
-          title: lang === "ru" ? "Плитки показателей" : "Metric tiles", icon: "mdi:view-grid-outline",
-          schema: [
-            { name: "show_steps_metric", default: true, selector: { boolean: {} } },
-            { name: "show_calories_metric", default: true, selector: { boolean: {} } },
-            { name: "show_sleep_metric", default: true, selector: { boolean: {} } },
-            { name: "show_heart_metric", default: true, selector: { boolean: {} } },
-            { name: "show_hrv_metric", default: true, selector: { boolean: {} } },
-            { name: "show_sleep_onset_metric", default: true, selector: { boolean: {} } },
-            { name: "show_sleep_wake_metric", default: true, selector: { boolean: {} } },
-            { name: "show_flights_metric", default: true, selector: { boolean: {} } },
-            { name: "show_exercise_metric", default: true, selector: { boolean: {} } },
-            { name: "show_resting_energy_metric", default: true, selector: { boolean: {} } },
-            { name: "show_distance_metric", default: true, selector: { boolean: {} } },
-            { name: "show_vo2_max_metric", default: true, selector: { boolean: {} } },
-            { name: "show_weight_metric", default: true, selector: { boolean: {} } },
-            ...HS_EXTRA_TILES.map(([, option]) => ({ name: option, default: true, selector: { boolean: {} } })),
-          ],
-        },
         {
           type: "expandable", name: "entities", flatten: false,
           title: lang === "ru" ? "Сущности показателей" : "Metric entities", icon: "mdi:database-edit-outline",
@@ -1215,7 +1195,7 @@ class HealthSyncDashboardCardEditor extends HTMLElement {
       this._render();
     } else if (changed) {
       this._form.data = { ...next };
-      this._renderTileOrderList();
+      this._renderTileControls();
     }
   }
 
@@ -1229,9 +1209,9 @@ class HealthSyncDashboardCardEditor extends HTMLElement {
     const count = Object.keys(detected).length;
     this.shadowRoot.innerHTML = `<style>
       :host{display:block}.entity-note{margin:0 0 10px;padding:10px 12px;border-radius:10px;background:var(--secondary-background-color);color:var(--secondary-text-color);font-size:12px;line-height:1.4}
-      .tile-order-editor{margin:0 0 12px;border:1px solid var(--divider-color);border-radius:12px;overflow:hidden}.tile-order-editor summary{padding:12px;cursor:pointer;font-weight:600}.tile-order-help{padding:0 12px 10px;color:var(--secondary-text-color);font-size:12px;line-height:1.4}.tile-order-list{display:grid;gap:5px;padding:0 10px 10px}.tile-order-row{display:grid;grid-template-columns:28px minmax(0,1fr) auto;align-items:center;gap:7px;padding:7px;border-radius:9px;background:var(--secondary-background-color)}.tile-order-row[draggable="true"]{cursor:grab}.tile-order-row.dragging{opacity:.45}.tile-order-handle{color:var(--secondary-text-color);font-size:18px;text-align:center}.tile-order-actions{display:flex;gap:3px}.tile-order-actions button,.tile-order-reset{appearance:none;border:0;border-radius:7px;background:var(--card-background-color);color:var(--primary-text-color);cursor:pointer}.tile-order-actions button{width:30px;height:30px;font-size:16px}.tile-order-reset{margin:0 10px 10px;padding:7px 10px}.tile-order-actions button:disabled{opacity:.3;cursor:default}
+      .tile-editor{margin:0 0 12px;border:1px solid var(--divider-color);border-radius:12px;overflow:hidden}.tile-editor summary{display:flex;align-items:center;gap:10px;padding:12px;cursor:pointer;font-weight:600}.tile-editor summary ha-icon{color:var(--secondary-text-color);width:20px}.tile-help{padding:0 12px 10px;color:var(--secondary-text-color);font-size:12px;line-height:1.4}.tile-list{display:grid;gap:5px;padding:0 10px 10px}.tile-control-row{display:grid;grid-template-columns:28px minmax(0,1fr) auto;align-items:center;gap:7px;min-height:42px;padding:5px 8px;border-radius:9px;background:var(--secondary-background-color);transition:opacity .12s ease}.tile-control-row.dragging{opacity:.45}.tile-drag-handle{display:grid;place-items:center;align-self:stretch;color:var(--secondary-text-color);font-size:19px;cursor:grab;touch-action:none;user-select:none}.tile-drag-handle:active{cursor:grabbing}.tile-control-label{min-width:0}.tile-control-row ha-switch{margin-inline-start:8px}
     </style><div class="entity-note">${count ? (lang === "ru" ? `Автоматически найдено сущностей HealthSync: ${count}. Любую из них можно заменить вручную ниже.` : `Automatically discovered ${count} HealthSync entities. You can override any of them below.`) : (lang === "ru" ? "Сущности HealthSync пока не найдены. Выполните хотя бы одну синхронизацию или выберите сущности вручную." : "No HealthSync entities found yet. Complete one synchronization or select entities manually.")}</div>
-    <details class="tile-order-editor"><summary>${lang === "ru" ? "Порядок плиток" : "Tile order"}</summary><div class="tile-order-help">${lang === "ru" ? "Перетаскивайте плитки или используйте стрелки. Скрытые плитки сохраняют выбранное место." : "Drag tiles or use the arrow buttons. Hidden tiles keep their selected position."}</div><div class="tile-order-list"></div><button type="button" class="tile-order-reset">${lang === "ru" ? "Сбросить порядок" : "Reset order"}</button></details>`;
+    <details class="tile-editor"><summary><ha-icon icon="mdi:view-grid-outline"></ha-icon><span>${lang === "ru" ? "Плитки показателей" : "Metric tiles"}</span></summary><div class="tile-help">${lang === "ru" ? "Перетаскивайте строки за ручку, чтобы изменить порядок плиток на карточке." : "Drag rows by the handle to change the tile order on the card."}</div><div class="tile-list"></div></details>`;
     const form = document.createElement("ha-form");
     form.hass = this._hass;
     form.data = { ...this._config };
@@ -1241,7 +1221,7 @@ class HealthSyncDashboardCardEditor extends HTMLElement {
     form.addEventListener("value-changed", (event) => this._valueChanged(event));
     this.shadowRoot.appendChild(form);
     this._form = form;
-    this._renderTileOrderList();
+    this._renderTileControls();
   }
 
   _tileOrder() {
@@ -1252,36 +1232,78 @@ class HealthSyncDashboardCardEditor extends HTMLElement {
     return order;
   }
 
-  _renderTileOrderList() {
-    const list = this.shadowRoot?.querySelector?.(".tile-order-list");
+  _renderTileControls() {
+    const list = this.shadowRoot?.querySelector?.(".tile-list");
     if (!list) return;
     const lang = (this._hass?.language || globalThis.navigator?.language || "en").toLowerCase().startsWith("ru") ? "ru" : "en";
     const order = this._tileOrder();
     const definitions = new Map(HS_TILE_DEFINITIONS.map((definition) => [definition[0], definition]));
-    list.innerHTML = order.map((metric, index) => {
+    list.innerHTML = order.map((metric) => {
       const definition = definitions.get(metric);
       const label = HS_TRANSLATIONS[lang][definition[2]] || HS_TRANSLATIONS.en[definition[2]] || metric;
-      return `<div class="tile-order-row" draggable="true" data-tile-metric="${metric}"><span class="tile-order-handle" aria-hidden="true">☰</span><span>${label}</span><span class="tile-order-actions"><button type="button" data-tile-move="up" aria-label="${lang === "ru" ? "Выше" : "Move up"}"${index === 0 ? " disabled" : ""}>↑</button><button type="button" data-tile-move="down" aria-label="${lang === "ru" ? "Ниже" : "Move down"}"${index === order.length - 1 ? " disabled" : ""}>↓</button></span></div>`;
+      const checked = this._config[definition[1]] !== false ? " checked" : "";
+      const moveLabel = `${lang === "ru" ? "Перетащить" : "Move"}: ${label}`;
+      return `<div class="tile-control-row" data-tile-metric="${metric}"><span class="tile-drag-handle" draggable="true" role="button" tabindex="0" aria-label="${moveLabel}">☰</span><span class="tile-control-label">${label}</span><ha-switch data-tile-toggle aria-label="${label}"${checked}></ha-switch></div>`;
     }).join("");
-    list.querySelectorAll(".tile-order-row").forEach((row) => {
-      row.addEventListener("dragstart", (event) => {
+    list.querySelectorAll(".tile-control-row").forEach((row) => {
+      const handle = row.querySelector(".tile-drag-handle");
+      const toggle = row.querySelector("[data-tile-toggle]");
+      handle?.addEventListener("dragstart", (event) => {
         this._draggedTile = row.dataset.tileMetric;
         row.classList.add("dragging");
         event.dataTransfer?.setData("text/plain", this._draggedTile);
       });
-      row.addEventListener("dragend", () => { row.classList.remove("dragging"); this._draggedTile = null; });
+      handle?.addEventListener("dragend", () => { row.classList.remove("dragging"); this._draggedTile = null; });
       row.addEventListener("dragover", (event) => event.preventDefault());
       row.addEventListener("drop", (event) => {
         event.preventDefault();
         const source = event.dataTransfer?.getData("text/plain") || this._draggedTile;
-        this._moveTileBefore(source, row.dataset.tileMetric);
+        this._moveTileAt(source, row.dataset.tileMetric, event.clientY > row.getBoundingClientRect().top + row.getBoundingClientRect().height / 2);
       });
-      row.querySelectorAll("[data-tile-move]").forEach((button) => {
-        button.addEventListener("click", () => this._moveTile(row.dataset.tileMetric, button.dataset.tileMove === "up" ? -1 : 1));
+      handle?.addEventListener("pointerdown", (event) => {
+        if (event.pointerType === "mouse") return;
+        this._pointerDragRow = row;
+        row.classList.add("dragging");
+        handle.setPointerCapture?.(event.pointerId);
       });
+      handle?.addEventListener("pointermove", (event) => this._pointerMove(event));
+      handle?.addEventListener("pointerup", (event) => this._finishPointerDrag(event));
+      handle?.addEventListener("pointercancel", (event) => this._finishPointerDrag(event));
+      toggle?.addEventListener("change", () => this._setTileVisibility(row.dataset.tileMetric, toggle.checked));
     });
-    const reset = this.shadowRoot.querySelector?.(".tile-order-reset");
-    if (reset) reset.onclick = () => this._applyTileOrder([], true);
+  }
+
+  _pointerMove(event) {
+    if (!this._pointerDragRow) return;
+    event.preventDefault();
+    const target = this.shadowRoot?.elementFromPoint?.(event.clientX, event.clientY)?.closest?.(".tile-control-row");
+    if (!target || target === this._pointerDragRow) return;
+    const after = event.clientY > target.getBoundingClientRect().top + target.getBoundingClientRect().height / 2;
+    target.parentElement.insertBefore(this._pointerDragRow, after ? target.nextSibling : target);
+  }
+
+  _finishPointerDrag(event) {
+    if (!this._pointerDragRow) return;
+    event.currentTarget?.releasePointerCapture?.(event.pointerId);
+    this._pointerDragRow.classList.remove("dragging");
+    this._pointerDragRow = null;
+    this._commitDomTileOrder();
+  }
+
+  _commitDomTileOrder() {
+    const rows = [...(this.shadowRoot?.querySelectorAll?.(".tile-control-row") || [])];
+    if (rows.length) this._applyTileOrder(rows.map((row) => row.dataset.tileMetric));
+  }
+
+  _setTileVisibility(metric, visible) {
+    const definition = HS_TILE_DEFINITIONS.find(([name]) => name === metric);
+    if (!definition) return;
+    const next = { ...this._config, [definition[1]]: Boolean(visible) };
+    this._config = next;
+    this._configSignature = JSON.stringify(next);
+    this.dispatchEvent(new CustomEvent("config-changed", {
+      bubbles: true, composed: true, detail: { config: next },
+    }));
   }
 
   _moveTile(metric, delta) {
@@ -1303,13 +1325,24 @@ class HealthSyncDashboardCardEditor extends HTMLElement {
     this._applyTileOrder(order);
   }
 
+  _moveTileAt(source, target, after = false) {
+    if (!source || source === target) return;
+    const order = this._tileOrder();
+    const sourceIndex = order.indexOf(source);
+    if (sourceIndex < 0 || !order.includes(target)) return;
+    order.splice(sourceIndex, 1);
+    const targetIndex = order.indexOf(target);
+    order.splice(targetIndex + (after ? 1 : 0), 0, source);
+    this._applyTileOrder(order);
+  }
+
   _applyTileOrder(order, reset = false) {
     const next = { ...this._config };
     if (reset) delete next.tile_order;
     else next.tile_order = [...order];
     this._config = next;
     this._configSignature = JSON.stringify(next);
-    this._renderTileOrderList();
+    this._renderTileControls();
     this.dispatchEvent(new CustomEvent("config-changed", {
       bubbles: true, composed: true, detail: { config: next },
     }));
@@ -1318,6 +1351,9 @@ class HealthSyncDashboardCardEditor extends HTMLElement {
   _valueChanged(event) {
     const next = { ...(event.detail?.value || this._config) };
     if (Array.isArray(this._config.tile_order) && next.tile_order === undefined) next.tile_order = [...this._config.tile_order];
+    for (const [, option] of HS_TILE_DEFINITIONS) {
+      if (this._config[option] !== undefined && next[option] === undefined) next[option] = this._config[option];
+    }
     this._config = next;
     this._configSignature = JSON.stringify(next);
     this.dispatchEvent(new CustomEvent("config-changed", {
