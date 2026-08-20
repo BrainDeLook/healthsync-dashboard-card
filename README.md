@@ -16,6 +16,7 @@ integration's native sensors and Recorder history without external frontend depe
 - Native Home Assistant graphical card editor with manual entity overrides
 - Fast first paint: entity discovery is cached and Recorder history loads after the card is visible
 - Independent visibility switches for every metric tile
+- Reorderable metric tiles with drag-and-drop and mobile-friendly arrow controls in the graphical editor
 - Current steps, active/resting calories, heart rate, HRV and sleep summary
 - HealthSync 0.20 vitals: resting/walking/recovery heart rate, blood pressure, AFib burden, SpO₂, respiratory rate, temperature and blood glucose
 - HealthSync 0.20 body metrics: BMI, body fat, lean body mass, height and waist circumference
@@ -104,6 +105,13 @@ show_body_fat_percentage_metric: true
 show_lean_body_mass_metric: true
 show_height_metric: true
 show_waist_circumference_metric: true
+
+# Optional custom order; omitted metrics follow in their default order
+tile_order:
+  - heart_rate
+  - blood_oxygen
+  - steps
+  - active_calories
 ```
 
 Standard HealthSync entity IDs are discovered automatically. Renamed entities can be

@@ -1,9 +1,9 @@
-/* HealthSync Dashboard Card v0.4.1
+/* HealthSync Dashboard Card v0.5.0
  * A dependency-free Lovelace card for mannotfood/healthsync.
  * MIT License
  */
 
-const HS_VERSION = "0.4.1";
+const HS_VERSION = "0.5.0";
 const HS_WORKOUT_SLOTS = Array.from({ length: 10 }, (_, index) => `workout_${index + 1}`);
 const HS_METRICS = [
   "last_sync", "steps", "active_calories", "heart_rate",
@@ -107,6 +107,22 @@ const HS_EXTRA_TILES = [
   ["lean_body_mass", "show_lean_body_mass_metric", "leanBodyMass", "mdi:scale-bathroom", "indigo"],
   ["height", "show_height_metric", "height", "mdi:human-male-height", "green"],
   ["waist_circumference", "show_waist_circumference_metric", "waistCircumference", "mdi:tape-measure", "green"],
+];
+const HS_TILE_DEFINITIONS = [
+  ["steps", "show_steps_metric", "steps", "mdi:walk", "blue"],
+  ["active_calories", "show_calories_metric", "calories", "mdi:fire", "orange"],
+  ["sleep_duration", "show_sleep_metric", "sleepDuration", "mdi:sleep", "indigo"],
+  ["heart_rate", "show_heart_metric", "heartRate", "mdi:heart-pulse", "red"],
+  ["heart_rate_variability", "show_hrv_metric", "hrv", "mdi:waves", "green"],
+  ["sleep_onset", "show_sleep_onset_metric", "fellAsleep", "mdi:weather-night", "indigo"],
+  ["sleep_wake", "show_sleep_wake_metric", "wokeUp", "mdi:weather-sunset-up", "cyan"],
+  ["flights_climbed", "show_flights_metric", "flightsClimbed", "mdi:stairs", "blue"],
+  ["exercise_time", "show_exercise_metric", "exerciseTime", "mdi:timer-outline", "green"],
+  ["resting_energy", "show_resting_energy_metric", "restingEnergy", "mdi:fire", "orange"],
+  ["distance", "show_distance_metric", "distance", "mdi:map-marker-distance", "cyan"],
+  ["vo2_max", "show_vo2_max_metric", "vo2Max", "mdi:lungs", "red"],
+  ["weight", "show_weight_metric", "weight", "mdi:scale-bathroom", "indigo"],
+  ...HS_EXTRA_TILES,
 ];
 
 const HS_TRANSLATIONS = {
@@ -285,6 +301,7 @@ class HealthSyncDashboardCard extends HTMLElement {
       ...Object.fromEntries(HS_EXTRA_TILES.map(([, option]) => [option, true])),
       step_goal: 10000,
       calorie_goal: 600,
+      tile_order: [],
       entities: {},
       ...config,
     };
@@ -330,6 +347,7 @@ class HealthSyncDashboardCard extends HTMLElement {
       show_resting_energy_metric: true, show_distance_metric: true,
       show_vo2_max_metric: true, show_weight_metric: true,
       ...Object.fromEntries(HS_EXTRA_TILES.map(([, option]) => [option, true])),
+      tile_order: [],
       entities: {},
     };
   }
@@ -640,6 +658,22 @@ class HealthSyncDashboardCard extends HTMLElement {
     </style>`;
   }
 
+  _orderedTileDefinitions() {
+    const definitions = new Map(HS_TILE_DEFINITIONS.map((definition) => [definition[0], definition]));
+    const configured = Array.isArray(this.config?.tile_order) ? this.config.tile_order : [];
+    const ordered = [];
+    const used = new Set();
+    for (const metric of configured) {
+      if (!definitions.has(metric) || used.has(metric)) continue;
+      ordered.push(definitions.get(metric));
+      used.add(metric);
+    }
+    for (const definition of HS_TILE_DEFINITIONS) {
+      if (!used.has(definition[0])) ordered.push(definition);
+    }
+    return ordered;
+  }
+
   _render() {
     if (!this.config || !this._hass || !this.shadowRoot) return;
     const metrics = this._availableMetrics();
@@ -654,22 +688,9 @@ class HealthSyncDashboardCard extends HTMLElement {
     const stepValue = this._numeric("steps") || 0;
     const goal = Math.max(1, Number(this.config.step_goal) || 10000);
     const goalPercent = Math.min(100, Math.max(0, stepValue / goal * 100));
-    const cards = [
-      this.config.show_steps_metric ? this._metric("steps", this._t("steps"), "mdi:walk", "blue") : "",
-      this.config.show_calories_metric ? this._metric("active_calories", this._t("calories"), "mdi:fire", "orange") : "",
-      this.config.show_sleep_metric ? this._metric("sleep_duration", this._t("sleepDuration"), "mdi:sleep", "indigo") : "",
-      this.config.show_heart_metric ? this._metric("heart_rate", this._t("heartRate"), "mdi:heart-pulse", "red") : "",
-      this.config.show_hrv_metric ? this._metric("heart_rate_variability", this._t("hrv"), "mdi:waves", "green") : "",
-      this.config.show_sleep_onset_metric ? this._metric("sleep_onset", this._t("fellAsleep"), "mdi:weather-night", "indigo") : "",
-      this.config.show_sleep_wake_metric ? this._metric("sleep_wake", this._t("wokeUp"), "mdi:weather-sunset-up", "cyan") : "",
-      this.config.show_flights_metric ? this._metric("flights_climbed", this._t("flightsClimbed"), "mdi:stairs", "blue") : "",
-      this.config.show_exercise_metric ? this._metric("exercise_time", this._t("exerciseTime"), "mdi:timer-outline", "green") : "",
-      this.config.show_resting_energy_metric ? this._metric("resting_energy", this._t("restingEnergy"), "mdi:fire", "orange") : "",
-      this.config.show_distance_metric ? this._metric("distance", this._t("distance"), "mdi:map-marker-distance", "cyan") : "",
-      this.config.show_vo2_max_metric ? this._metric("vo2_max", this._t("vo2Max"), "mdi:lungs", "red") : "",
-      this.config.show_weight_metric ? this._metric("weight", this._t("weight"), "mdi:scale-bathroom", "indigo") : "",
-      ...HS_EXTRA_TILES.map(([metric, option, label, icon, tone]) => this.config[option] ? this._metric(metric, this._t(label), icon, tone) : ""),
-    ].filter(Boolean).join("");
+    const cards = this._orderedTileDefinitions()
+      .map(([metric, option, label, icon, tone]) => this.config[option] ? this._metric(metric, this._t(label), icon, tone) : "")
+      .filter(Boolean).join("");
     const hasActivityChart = this.config.show_activity && (this._entity("steps") || this._entity("active_calories"));
     const hasSleepChart = this.config.show_sleep && this._entity("sleep_duration");
     const hasHeartChart = this.config.show_heart_rate && this._entity("heart_rate");
@@ -1194,6 +1215,7 @@ class HealthSyncDashboardCardEditor extends HTMLElement {
       this._render();
     } else if (changed) {
       this._form.data = { ...next };
+      this._renderTileOrderList();
     }
   }
 
@@ -1205,7 +1227,11 @@ class HealthSyncDashboardCardEditor extends HTMLElement {
     const detected = HealthSyncDashboardCard.discoverEntities(this._hass);
     const base = HealthSyncDashboardCard.getConfigForm();
     const count = Object.keys(detected).length;
-    this.shadowRoot.innerHTML = `<style>:host{display:block}.entity-note{margin:0 0 10px;padding:10px 12px;border-radius:10px;background:var(--secondary-background-color);color:var(--secondary-text-color);font-size:12px;line-height:1.4}</style><div class="entity-note">${count ? (lang === "ru" ? `Автоматически найдено сущностей HealthSync: ${count}. Любую из них можно заменить вручную ниже.` : `Automatically discovered ${count} HealthSync entities. You can override any of them below.`) : (lang === "ru" ? "Сущности HealthSync пока не найдены. Выполните хотя бы одну синхронизацию или выберите сущности вручную." : "No HealthSync entities found yet. Complete one synchronization or select entities manually.")}</div>`;
+    this.shadowRoot.innerHTML = `<style>
+      :host{display:block}.entity-note{margin:0 0 10px;padding:10px 12px;border-radius:10px;background:var(--secondary-background-color);color:var(--secondary-text-color);font-size:12px;line-height:1.4}
+      .tile-order-editor{margin:0 0 12px;border:1px solid var(--divider-color);border-radius:12px;overflow:hidden}.tile-order-editor summary{padding:12px;cursor:pointer;font-weight:600}.tile-order-help{padding:0 12px 10px;color:var(--secondary-text-color);font-size:12px;line-height:1.4}.tile-order-list{display:grid;gap:5px;padding:0 10px 10px}.tile-order-row{display:grid;grid-template-columns:28px minmax(0,1fr) auto;align-items:center;gap:7px;padding:7px;border-radius:9px;background:var(--secondary-background-color)}.tile-order-row[draggable="true"]{cursor:grab}.tile-order-row.dragging{opacity:.45}.tile-order-handle{color:var(--secondary-text-color);font-size:18px;text-align:center}.tile-order-actions{display:flex;gap:3px}.tile-order-actions button,.tile-order-reset{appearance:none;border:0;border-radius:7px;background:var(--card-background-color);color:var(--primary-text-color);cursor:pointer}.tile-order-actions button{width:30px;height:30px;font-size:16px}.tile-order-reset{margin:0 10px 10px;padding:7px 10px}.tile-order-actions button:disabled{opacity:.3;cursor:default}
+    </style><div class="entity-note">${count ? (lang === "ru" ? `Автоматически найдено сущностей HealthSync: ${count}. Любую из них можно заменить вручную ниже.` : `Automatically discovered ${count} HealthSync entities. You can override any of them below.`) : (lang === "ru" ? "Сущности HealthSync пока не найдены. Выполните хотя бы одну синхронизацию или выберите сущности вручную." : "No HealthSync entities found yet. Complete one synchronization or select entities manually.")}</div>
+    <details class="tile-order-editor"><summary>${lang === "ru" ? "Порядок плиток" : "Tile order"}</summary><div class="tile-order-help">${lang === "ru" ? "Перетаскивайте плитки или используйте стрелки. Скрытые плитки сохраняют выбранное место." : "Drag tiles or use the arrow buttons. Hidden tiles keep their selected position."}</div><div class="tile-order-list"></div><button type="button" class="tile-order-reset">${lang === "ru" ? "Сбросить порядок" : "Reset order"}</button></details>`;
     const form = document.createElement("ha-form");
     form.hass = this._hass;
     form.data = { ...this._config };
@@ -1215,10 +1241,83 @@ class HealthSyncDashboardCardEditor extends HTMLElement {
     form.addEventListener("value-changed", (event) => this._valueChanged(event));
     this.shadowRoot.appendChild(form);
     this._form = form;
+    this._renderTileOrderList();
+  }
+
+  _tileOrder() {
+    const known = new Set(HS_TILE_DEFINITIONS.map(([metric]) => metric));
+    const configured = Array.isArray(this._config.tile_order) ? this._config.tile_order : [];
+    const order = configured.filter((metric, index) => known.has(metric) && configured.indexOf(metric) === index);
+    for (const [metric] of HS_TILE_DEFINITIONS) if (!order.includes(metric)) order.push(metric);
+    return order;
+  }
+
+  _renderTileOrderList() {
+    const list = this.shadowRoot?.querySelector?.(".tile-order-list");
+    if (!list) return;
+    const lang = (this._hass?.language || globalThis.navigator?.language || "en").toLowerCase().startsWith("ru") ? "ru" : "en";
+    const order = this._tileOrder();
+    const definitions = new Map(HS_TILE_DEFINITIONS.map((definition) => [definition[0], definition]));
+    list.innerHTML = order.map((metric, index) => {
+      const definition = definitions.get(metric);
+      const label = HS_TRANSLATIONS[lang][definition[2]] || HS_TRANSLATIONS.en[definition[2]] || metric;
+      return `<div class="tile-order-row" draggable="true" data-tile-metric="${metric}"><span class="tile-order-handle" aria-hidden="true">☰</span><span>${label}</span><span class="tile-order-actions"><button type="button" data-tile-move="up" aria-label="${lang === "ru" ? "Выше" : "Move up"}"${index === 0 ? " disabled" : ""}>↑</button><button type="button" data-tile-move="down" aria-label="${lang === "ru" ? "Ниже" : "Move down"}"${index === order.length - 1 ? " disabled" : ""}>↓</button></span></div>`;
+    }).join("");
+    list.querySelectorAll(".tile-order-row").forEach((row) => {
+      row.addEventListener("dragstart", (event) => {
+        this._draggedTile = row.dataset.tileMetric;
+        row.classList.add("dragging");
+        event.dataTransfer?.setData("text/plain", this._draggedTile);
+      });
+      row.addEventListener("dragend", () => { row.classList.remove("dragging"); this._draggedTile = null; });
+      row.addEventListener("dragover", (event) => event.preventDefault());
+      row.addEventListener("drop", (event) => {
+        event.preventDefault();
+        const source = event.dataTransfer?.getData("text/plain") || this._draggedTile;
+        this._moveTileBefore(source, row.dataset.tileMetric);
+      });
+      row.querySelectorAll("[data-tile-move]").forEach((button) => {
+        button.addEventListener("click", () => this._moveTile(row.dataset.tileMetric, button.dataset.tileMove === "up" ? -1 : 1));
+      });
+    });
+    const reset = this.shadowRoot.querySelector?.(".tile-order-reset");
+    if (reset) reset.onclick = () => this._applyTileOrder([], true);
+  }
+
+  _moveTile(metric, delta) {
+    const order = this._tileOrder();
+    const index = order.indexOf(metric);
+    const target = index + delta;
+    if (index < 0 || target < 0 || target >= order.length) return;
+    [order[index], order[target]] = [order[target], order[index]];
+    this._applyTileOrder(order);
+  }
+
+  _moveTileBefore(source, target) {
+    if (!source || source === target) return;
+    const order = this._tileOrder();
+    const sourceIndex = order.indexOf(source);
+    if (sourceIndex < 0 || !order.includes(target)) return;
+    order.splice(sourceIndex, 1);
+    order.splice(order.indexOf(target), 0, source);
+    this._applyTileOrder(order);
+  }
+
+  _applyTileOrder(order, reset = false) {
+    const next = { ...this._config };
+    if (reset) delete next.tile_order;
+    else next.tile_order = [...order];
+    this._config = next;
+    this._configSignature = JSON.stringify(next);
+    this._renderTileOrderList();
+    this.dispatchEvent(new CustomEvent("config-changed", {
+      bubbles: true, composed: true, detail: { config: next },
+    }));
   }
 
   _valueChanged(event) {
     const next = { ...(event.detail?.value || this._config) };
+    if (Array.isArray(this._config.tile_order) && next.tile_order === undefined) next.tile_order = [...this._config.tile_order];
     this._config = next;
     this._configSignature = JSON.stringify(next);
     this.dispatchEvent(new CustomEvent("config-changed", {

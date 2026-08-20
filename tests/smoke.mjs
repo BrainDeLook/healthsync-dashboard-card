@@ -169,6 +169,15 @@ const externalEditorConfig = { ...changedEditorConfig, show_steps_metric: true }
 editor.setConfig(externalEditorConfig);
 assert.strictEqual(editor._form, editorForm, "an external config update must reuse the existing form");
 assert.deepEqual(editorForm.data, externalEditorConfig);
+assert.match(editor.shadowRoot.innerHTML, /Tile order/);
+editor._moveTile("active_calories", -1);
+assert.equal(editor.lastEvent.detail.config.tile_order[0], "active_calories");
+assert.equal(editor.lastEvent.detail.config.tile_order[1], "steps");
+const reorderedEditorConfig = editor.lastEvent.detail.config;
+editor.setConfig(reorderedEditorConfig);
+assert.strictEqual(editor._form, editorForm, "changing tile order must preserve the editor form");
+editorForm.listeners["value-changed"]({ detail: { value: { ...externalEditorConfig, show_hrv_metric: false } } });
+assert.deepEqual(editor.lastEvent.detail.config.tile_order, reorderedEditorConfig.tile_order, "form changes must preserve custom tile order");
 
 const card = new Card();
 card.setConfig({ language: "en", step_goal: 10000, days: 3 });
@@ -201,6 +210,13 @@ assert.match(card.shadowRoot.innerHTML, />1\.5 h<\/title>/);
 assert.match(card.shadowRoot.innerHTML, />0\.3 h<\/title>/);
 assert.match(card.shadowRoot.innerHTML, /Unspecified/);
 assert.doesNotMatch(card.shadowRoot.innerHTML, /(?:NaN|Infinity)/);
+
+const reorderedCard = new Card();
+reorderedCard.setConfig({ language: "en", tile_order: ["blood_oxygen", "steps"] });
+reorderedCard.hass = { language: "en", states: healthsyncStates, callApi: async () => [], callWS: async () => ({}) };
+const reorderedMarkup = reorderedCard.shadowRoot.innerHTML;
+assert.ok(reorderedMarkup.indexOf('data-entity="sensor.healthsync_blood_oxygen"') < reorderedMarkup.indexOf('data-entity="sensor.healthsync_steps_today"'), "custom tile order must control the dashboard layout");
+reorderedCard.disconnectedCallback();
 
 const interactionRender = card._render.bind(card);
 let interactionRenderCount = 0;
