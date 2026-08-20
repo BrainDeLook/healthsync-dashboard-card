@@ -9,6 +9,11 @@ show_sleep: true
 show_heart_rate: true
 show_workouts_tab: true
 
+# Необязательно: устройство для точных исходных точек графика пульса
+# (можно выбрать через графический редактор; без него карточка попробует
+# определить устройство автоматически).
+# device_id: 0123456789abcdef0123456789abcdef
+
 # Сущности стандартной установки HealthSync определяются автоматически.
 # При переименовании их можно указать вручную:
 # entities:
@@ -16,6 +21,21 @@ show_workouts_tab: true
 #   active_calories: sensor.healthsync_active_calories_today
 #   heart_rate: sensor.healthsync_heart_rate
 #   heart_rate_variability: sensor.healthsync_heart_rate_variability
+#   resting_heart_rate: sensor.healthsync_resting_heart_rate
+#   blood_pressure_systolic: sensor.healthsync_blood_pressure_systolic
+#   blood_pressure_diastolic: sensor.healthsync_blood_pressure_diastolic
+#   walking_heart_rate: sensor.healthsync_walking_heart_rate
+#   heart_rate_recovery: sensor.healthsync_heart_rate_recovery
+#   afib_burden: sensor.healthsync_afib_burden
+#   blood_oxygen: sensor.healthsync_blood_oxygen
+#   respiratory_rate: sensor.healthsync_respiratory_rate
+#   body_temperature: sensor.healthsync_body_temperature
+#   blood_glucose: sensor.healthsync_blood_glucose
+#   body_mass_index: sensor.healthsync_body_mass_index
+#   body_fat_percentage: sensor.healthsync_body_fat_percentage
+#   lean_body_mass: sensor.healthsync_lean_body_mass
+#   height: sensor.healthsync_height
+#   waist_circumference: sensor.healthsync_waist_circumference
 #   sleep_duration: sensor.healthsync_sleep_last_night
 #   sleep_onset: sensor.healthsync_fell_asleep
 #   sleep_wake: sensor.healthsync_woke_up

@@ -17,14 +17,16 @@ integration's native sensors and Recorder history without external frontend depe
 - Fast first paint: entity discovery is cached and Recorder history loads after the card is visible
 - Independent visibility switches for every metric tile
 - Current steps, active/resting calories, heart rate, HRV and sleep summary
+- HealthSync 0.20 vitals: resting/walking/recovery heart rate, blood pressure, AFib burden, SpO₂, respiratory rate, temperature and blood glucose
+- HealthSync 0.20 body metrics: BMI, body fat, lean body mass, height and waist circumference
 - HealthSync 0.12+ tiles for flights climbed, exercise time, walking/running distance, VO₂ max and weight
 - Fell-asleep and wake-up times
 - Step-goal progress bar
 - Independent step and calorie scales in the activity chart
-- Point-to-point 24-hour heart-rate chart using HealthSync's accurate hourly statistics when available
+- Point-to-point 24-hour heart-rate chart using exact `healthsync.get_readings` samples, with hourly statistics and Recorder fallbacks
 - Sleep-stage chart built from `deep_minutes`, `core_minutes`, `rem_minutes` and `awake_minutes`
 - Separate Workouts tab for the latest workout and the recent workout log
-- Automatic discovery of the individually named workout entities and per-activity icons from HealthSync `0.11.0`–`0.14.0`
+- Automatic discovery of the individually named workout entities and per-activity icons from HealthSync `0.11.0`–`0.20.2`
 - Compact scrollable recent-workout list instead of expanding the whole card
 - Optional `show_workouts_tab` switch in the graphical editor and YAML
 - Compact responsive layout for Masonry and Sections dashboards
@@ -36,7 +38,7 @@ integration's native sensors and Recorder history without external frontend depe
 - [mannotfood/healthsync](https://github.com/mannotfood/healthsync), synced at least once
 - HACS for the recommended installation method
 
-The complete feature set targets HealthSync `0.14.0`. Older entities remain supported,
+The complete feature set targets HealthSync `0.20.2`. Older entities remain supported,
 including the legacy `Recent workouts` sensor used before HealthSync `0.11.0`.
 
 ## Install with HACS as a custom repository
@@ -64,6 +66,7 @@ Common options:
 type: custom:healthsync-dashboard-card
 title: HealthSync
 language: auto
+device_id: 0123456789abcdef0123456789abcdef # optional; enables exact readings history
 days: 7
 step_goal: 10000
 calorie_goal: 600
@@ -86,6 +89,21 @@ show_resting_energy_metric: true
 show_distance_metric: true
 show_vo2_max_metric: true
 show_weight_metric: true
+show_resting_heart_rate_metric: true
+show_blood_pressure_systolic_metric: true
+show_blood_pressure_diastolic_metric: true
+show_walking_heart_rate_metric: true
+show_heart_rate_recovery_metric: true
+show_afib_burden_metric: true
+show_blood_oxygen_metric: true
+show_respiratory_rate_metric: true
+show_body_temperature_metric: true
+show_blood_glucose_metric: true
+show_body_mass_index_metric: true
+show_body_fat_percentage_metric: true
+show_lean_body_mass_metric: true
+show_height_metric: true
+show_waist_circumference_metric: true
 ```
 
 Standard HealthSync entity IDs are discovered automatically. Renamed entities can be
@@ -107,6 +125,21 @@ entities:
   distance: sensor.healthsync_walking_running_distance_today
   vo2_max: sensor.healthsync_vo2_max
   weight: sensor.healthsync_weight
+  resting_heart_rate: sensor.healthsync_resting_heart_rate
+  blood_pressure_systolic: sensor.healthsync_blood_pressure_systolic
+  blood_pressure_diastolic: sensor.healthsync_blood_pressure_diastolic
+  walking_heart_rate: sensor.healthsync_walking_heart_rate
+  heart_rate_recovery: sensor.healthsync_heart_rate_recovery
+  afib_burden: sensor.healthsync_afib_burden
+  blood_oxygen: sensor.healthsync_blood_oxygen
+  respiratory_rate: sensor.healthsync_respiratory_rate
+  body_temperature: sensor.healthsync_body_temperature
+  blood_glucose: sensor.healthsync_blood_glucose
+  body_mass_index: sensor.healthsync_body_mass_index
+  body_fat_percentage: sensor.healthsync_body_fat_percentage
+  lean_body_mass: sensor.healthsync_lean_body_mass
+  height: sensor.healthsync_height
+  waist_circumference: sensor.healthsync_waist_circumference
   last_sync: sensor.healthsync_last_sync
   last_workout_type: sensor.healthsync_workouts_last_workout_type
   last_workout_duration: sensor.healthsync_workouts_last_workout_duration
@@ -128,10 +161,12 @@ Assistant automations and the unlimited Logbook history.
 
 ## Heart-rate history
 
-HealthSync `0.13.0+` imports accurately dated hourly min/mean/max statistics for
-heart rate. The card requests the hourly mean through Home Assistant's Recorder
-statistics API and prefers it over raw state changes, which are timestamped at sync
-time. If statistics are unavailable, the card falls back to ordinary Recorder history.
+HealthSync `0.16.0+` archives every original reading and exposes it through
+`healthsync.get_readings`. Select the HealthSync device in the graphical editor (or
+set `device_id` in YAML) to use exact Apple timestamps and values. When no device is
+selected, the card attempts to resolve it from the configured entities automatically.
+Older integrations and unavailable services fall back to hourly statistics, then to
+ordinary Recorder history.
 Invalid placeholder values outside `25–250 bpm` are ignored. Dotted extensions mark
 the parts of the 24-hour window before the first and after the last available reading;
 they are not treated as measured data.
