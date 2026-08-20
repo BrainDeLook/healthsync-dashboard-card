@@ -1,9 +1,9 @@
-/* HealthSync Dashboard Card v0.4.0
+/* HealthSync Dashboard Card v0.4.1
  * A dependency-free Lovelace card for mannotfood/healthsync.
  * MIT License
  */
 
-const HS_VERSION = "0.4.0";
+const HS_VERSION = "0.4.1";
 const HS_WORKOUT_SLOTS = Array.from({ length: 10 }, (_, index) => `workout_${index + 1}`);
 const HS_METRICS = [
   "last_sync", "steps", "active_calories", "heart_rate",
@@ -1169,6 +1169,7 @@ class HealthSyncDashboardCardEditor extends HTMLElement {
     super();
     this.attachShadow({ mode: "open" });
     this._config = {};
+    this._configSignature = "";
     this._entitySignature = "";
   }
 
@@ -1184,8 +1185,16 @@ class HealthSyncDashboardCardEditor extends HTMLElement {
   }
 
   setConfig(config) {
-    this._config = { ...config };
-    this._render();
+    const next = { ...config };
+    const signature = JSON.stringify(next);
+    const changed = signature !== this._configSignature;
+    this._config = next;
+    this._configSignature = signature;
+    if (!this._form) {
+      this._render();
+    } else if (changed) {
+      this._form.data = { ...next };
+    }
   }
 
   connectedCallback() { this._render(); }
@@ -1210,6 +1219,8 @@ class HealthSyncDashboardCardEditor extends HTMLElement {
 
   _valueChanged(event) {
     const next = { ...(event.detail?.value || this._config) };
+    this._config = next;
+    this._configSignature = JSON.stringify(next);
     this.dispatchEvent(new CustomEvent("config-changed", {
       bubbles: true, composed: true, detail: { config: next },
     }));

@@ -157,6 +157,18 @@ editor.setConfig({ type: "custom:healthsync-dashboard-card", entities: {} });
 editor.hass = { language: "en", states: healthsyncStates };
 assert.match(editor.shadowRoot.innerHTML, /Automatically discovered 36 HealthSync entities/);
 assert.equal(editor._form.schema[0].name, "title");
+const editorForm = editor._form;
+const editorMarkup = editor.shadowRoot.innerHTML;
+const changedEditorConfig = { type: "custom:healthsync-dashboard-card", entities: {}, show_steps_metric: false };
+editorForm.listeners["value-changed"]({ detail: { value: changedEditorConfig } });
+assert.equal(editor.lastEvent.type, "config-changed");
+editor.setConfig(changedEditorConfig);
+assert.strictEqual(editor._form, editorForm, "an echoed form change must not recreate the editor");
+assert.equal(editor.shadowRoot.innerHTML, editorMarkup, "an echoed form change must preserve editor scroll state");
+const externalEditorConfig = { ...changedEditorConfig, show_steps_metric: true };
+editor.setConfig(externalEditorConfig);
+assert.strictEqual(editor._form, editorForm, "an external config update must reuse the existing form");
+assert.deepEqual(editorForm.data, externalEditorConfig);
 
 const card = new Card();
 card.setConfig({ language: "en", step_goal: 10000, days: 3 });
