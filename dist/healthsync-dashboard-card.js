@@ -485,7 +485,7 @@ class HealthSyncDashboardCard extends HTMLElement {
         },
         {
           type: "expandable", name: "", flatten: true, expanded: true,
-          title: lang === "ru" ? "Отображаемые разделы" : "Visible sections", icon: "mdi:view-dashboard-outline",
+          title: lang === "ru" ? "Отображаемые разделы" : lang === "de" ? "Sichtbare Bereiche" : "Visible sections", icon: "mdi:view-dashboard-outline",
           schema: [
             { name: "show_activity", default: true, selector: { boolean: {} } },
             { name: "show_sleep", default: true, selector: { boolean: {} } },
@@ -496,11 +496,11 @@ class HealthSyncDashboardCard extends HTMLElement {
         { name: "device_id", selector: { device: { filter: { integration: "healthsync" } } } },
         {
           type: "expandable", name: "entities", flatten: false,
-          title: lang === "ru" ? "Сущности показателей" : "Metric entities", icon: "mdi:database-edit-outline",
+          title: lang === "ru" ? "Сущности показателей" : lang === "de" ? "Metrik-Entitäten" : "Metric entities", icon: "mdi:database-edit-outline",
           schema: entityFields,
         },
       ],
-      computeLabel: (schema) => labels[schema.name] || (/^workout_\d+$/.test(schema.name) ? `${lang === "ru" ? "Тренировка" : "Workout"} ${schema.name.slice(8)}` : schema.name),
+      computeLabel: (schema) => labels[schema.name] || (/^workout_\d+$/.test(schema.name) ? `${lang === "ru" ? "Тренировка" : lang === "de" ? "Training" : "Workout"} ${schema.name.slice(8)}` : schema.name),
       computeHelper: () => undefined,
       assertConfig: (config) => {
         if (config.entities !== undefined && (!config.entities || typeof config.entities !== "object" || Array.isArray(config.entities))) {
@@ -986,10 +986,17 @@ class HealthSyncDashboardCard extends HTMLElement {
 
   _historyTitle(kind) {
     const days=Math.max(2,Math.min(31,Number(this.config.days)||7));
-    if(this._lang()!=="ru") return `${kind==="activity"?"Activity":"Sleep stages"} · ${days} ${days===1?"day":"days"}`;
-    const category=new Intl.PluralRules("ru").select(days);
-    const dayWord=category==="one"?"день":category==="few"?"дня":"дней";
-    return `${kind==="activity"?"Активность":"Фазы сна"} · ${days} ${dayWord}`;
+    const lang=this._lang();
+    if(lang==="ru") {
+      const category=new Intl.PluralRules("ru").select(days);
+      const dayWord=category==="one"?"день":category==="few"?"дня":"дней";
+      return `${kind==="activity"?"Активность":"Фазы сна"} · ${days} ${dayWord}`;
+    }
+    if(lang==="de") {
+      const dayWord=days===1?"Tag":"Tage";
+      return `${kind==="activity"?"Aktivität":"Schlafphasen"} · ${days} ${dayWord}`;
+    }
+    return `${kind==="activity"?"Activity":"Sleep stages"} · ${days} ${days===1?"day":"days"}`;
   }
 
   _activityChart() {
@@ -1310,8 +1317,8 @@ class HealthSyncDashboardCardEditor extends HTMLElement {
     this.shadowRoot.innerHTML = `<style>
       :host{display:block}.entity-note{margin:0 0 10px;padding:10px 12px;border-radius:10px;background:var(--secondary-background-color);color:var(--secondary-text-color);font-size:12px;line-height:1.4}
       .tile-editor{margin:0 0 12px;border:1px solid var(--divider-color);border-radius:12px;overflow:hidden}.tile-editor summary{display:flex;align-items:center;gap:10px;padding:12px;cursor:pointer;font-weight:600}.tile-editor summary ha-icon{color:var(--secondary-text-color);width:20px}.tile-help{padding:0 12px 10px;color:var(--secondary-text-color);font-size:12px;line-height:1.4}.tile-list{display:grid;gap:5px;padding:0 10px 10px}.tile-control-row{display:grid;grid-template-columns:28px minmax(0,1fr) auto;align-items:center;gap:7px;min-height:42px;padding:5px 8px;border-radius:9px;background:var(--secondary-background-color);transition:opacity .12s ease}.tile-control-row.dragging{opacity:.45}.tile-drag-handle{display:grid;place-items:center;align-self:stretch;color:var(--secondary-text-color);font-size:19px;cursor:grab;touch-action:none;user-select:none}.tile-drag-handle:active{cursor:grabbing}.tile-control-label{min-width:0}.tile-control-row ha-switch{margin-inline-start:8px}
-    </style><div class="entity-note">${count ? (lang === "ru" ? `Автоматически найдено сущностей HealthSync: ${count}. Любую из них можно заменить вручную ниже.` : `Automatically discovered ${count} HealthSync entities. You can override any of them below.`) : (lang === "ru" ? "Сущности HealthSync пока не найдены. Выполните хотя бы одну синхронизацию или выберите сущности вручную." : "No HealthSync entities found yet. Complete one synchronization or select entities manually.")}</div>
-    <details class="tile-editor"><summary><ha-icon icon="mdi:view-grid-outline"></ha-icon><span>${lang === "ru" ? "Плитки показателей" : "Metric tiles"}</span></summary><div class="tile-help">${lang === "ru" ? "Перетаскивайте строки за ручку, чтобы изменить порядок плиток на карточке." : "Drag rows by the handle to change the tile order on the card."}</div><div class="tile-list"></div></details>`;
+    </style><div class="entity-note">${count ? (lang === "ru" ? `Автоматически найдено сущностей HealthSync: ${count}. Любую из них можно заменить вручную ниже.` : lang === "de" ? `Automatisch ${count} HealthSync-Entitäten gefunden. Beliebige können unten überschrieben werden.` : `Automatically discovered ${count} HealthSync entities. You can override any of them below.`) : (lang === "ru" ? "Сущности HealthSync пока не найдены. Выполните хотя бы одну синхронизацию или выберите сущности вручную." : lang === "de" ? "Noch keine HealthSync-Entitäten. Einmal synchronisieren oder manuell auswählen." : "No HealthSync entities found yet. Complete one synchronization or select entities manually.")}</div>
+    <details class="tile-editor"><summary><ha-icon icon="mdi:view-grid-outline"></ha-icon><span>${lang === "ru" ? "Плитки показателей" : lang === "de" ? "Metrikkacheln" : "Metric tiles"}</span></summary><div class="tile-help">${lang === "ru" ? "Перетаскивайте строки за ручку, чтобы изменить порядок плиток на карточке." : lang === "de" ? "Zeilen am Griff ziehen zum Ändern der Reihenfolge." : "Drag rows by the handle to change the tile order on the card."}</div><div class="tile-list"></div></details>`;
     const form = document.createElement("ha-form");
     form.hass = this._hass;
     form.data = { ...this._config };
