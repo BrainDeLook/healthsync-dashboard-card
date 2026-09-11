@@ -1,9 +1,9 @@
-/* HealthSync Dashboard Card v0.6.0
+/* HealthSync Dashboard Card v0.6.1
  * A dependency-free Lovelace card for the HA Companion App (Apple Health / Health Connect).
  * MIT License
  */
 
-const HS_VERSION = "0.6.0";
+const HS_VERSION = "0.6.1";
 const HS_METRICS = [
   "steps", "active_calories", "heart_rate",
   "heart_rate_variability", "sleep_duration",
@@ -159,6 +159,7 @@ const HS_TRANSLATIONS = {
 
 const HS_EDITOR_LABELS = {
   de: {
+    mobile_device: "Mobilgerät",
     title: "Titel", language: "Sprache",
     days: "Verlaufszeitraum", step_goal: "Tägliches Schrittziel", calorie_goal: "Tägliches Kalorienziel (aktiv)",
     show_activity: "Aktivitätsdiagramm anzeigen", show_sleep: "Schlafdiagramm anzeigen",
@@ -188,6 +189,7 @@ const HS_EDITOR_LABELS = {
     lean_body_mass: "Magermasse", height: "Größe",
   },
   en: {
+    mobile_device: "Mobile device",
     title: "Title", language: "Language",
     days: "History period", step_goal: "Daily step goal", calorie_goal: "Daily active calorie goal",
     show_activity: "Show activity chart", show_sleep: "Show sleep chart",
@@ -235,6 +237,7 @@ const HS_EDITOR_LABELS = {
     respiratory_rate: "Частота дыхания", body_temperature: "Температура тела", blood_glucose: "Глюкоза крови",
     body_fat_percentage: "Процент жира",
     lean_body_mass: "Безжировая масса", height: "Рост",
+    mobile_device: "Мобильное устройство",
     title: "Заголовок", language: "Язык",
     days: "Период истории", step_goal: "Дневная цель шагов", calorie_goal: "Дневная цель активных калорий",
     show_activity: "Показывать график активности", show_sleep: "Показывать график сна",
@@ -273,6 +276,7 @@ class HealthSyncDashboardCard extends HTMLElement {
     this.config = {
       title: undefined,
       language: undefined,
+      mobile_device: undefined,
       days: 7,
       show_activity: true,
       show_sleep: true,
@@ -299,6 +303,8 @@ class HealthSyncDashboardCard extends HTMLElement {
       throw new Error("entities must be a mapping of metric names to entity IDs");
     }
     this._historyKey = "";
+    this._detectedEntities = {};
+    this._entityDiscoveryAt = 0;
     this._renderSignature = this._relevantStateSignature();
     this._render();
   }
@@ -339,15 +345,15 @@ class HealthSyncDashboardCard extends HTMLElement {
     return document.createElement("healthsync-dashboard-card-editor");
   }
 
-  static discoverEntities(hass) {
+  static discoverEntities(hass, allowedEntityIds) {
     const states = hass?.states || {};
     const stateEntries = Object.entries(states);
     const sensorIds = stateEntries
       .map(([entityId]) => entityId)
-      .filter((entityId) => entityId.startsWith("sensor."));
+      .filter((entityId) => entityId.startsWith("sensor.") && (!allowedEntityIds || allowedEntityIds.has(entityId)));
     const entities = {};
     for (const metric of HS_METRICS) {
-      const exact = HS_ENTITY_CANDIDATES[metric].find((entityId) => states[entityId]);
+      const exact = HS_ENTITY_CANDIDATES[metric].find((entityId) => states[entityId] && (!allowedEntityIds || allowedEntityIds.has(entityId)));
       if (exact) { entities[metric] = exact; continue; }
       const suffixes = HS_ENTITY_SUFFIXES[metric];
       const match = sensorIds.find((entityId) => suffixes.some((suffix) => entityId.slice(7) === suffix || entityId.endsWith(`_${suffix}`)));
@@ -366,6 +372,7 @@ class HealthSyncDashboardCard extends HTMLElement {
     return {
       schema: [
         { name: "title", selector: { text: {} } },
+        { name: "mobile_device", selector: { device: { integration: "mobile_app" } } },
         {
           name: "language", default: "auto",
           selector: { select: { mode: "dropdown", options: [
@@ -440,9 +447,20 @@ class HealthSyncDashboardCard extends HTMLElement {
     const detectedIds = Object.values(this._detectedEntities);
     const cacheIsFresh = detectedIds.length
       && Date.now() - this._entityDiscoveryAt < 60000
-      && detectedIds.every((entityId) => states[entityId]);
+      && detectedIds.every((entityId) => states[entityId])
+      && this._entityDiscoveryDevice === (this.config?.mobile_device || "");
     if (cacheIsFresh) return;
-    this._detectedEntities = HealthSyncDashboardCard.discoverEntities(this._hass);
+    this._entityDiscoveryDevice = this.config?.mobile_device || "";
+    let allowedEntityIds;
+    const deviceId = this.config?.mobile_device;
+    if (deviceId && this._hass?.entities) {
+      allowedEntityIds = new Set(
+        Object.entries(this._hass.entities)
+          .filter(([, entry]) => entry.device_id === deviceId)
+          .map(([entityId]) => entityId)
+      );
+    }
+    this._detectedEntities = HealthSyncDashboardCard.discoverEntities(this._hass, allowedEntityIds);
     this._entityDiscoveryAt = Date.now();
   }
 
