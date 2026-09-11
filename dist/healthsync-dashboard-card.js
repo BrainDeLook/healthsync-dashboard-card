@@ -1,10 +1,10 @@
-/* HealthSync Dashboard Card v0.5.2-de-fix
- * A dependency-free Lovelace card for mannotfood/healthsync.
+/* HealthSync Dashboard Card v0.5.6
+ * A dependency-free Lovelace card for the HA Companion App (Apple Health / Health Connect).
+ * HealthSync integration supported as optional backend for exclusive metrics.
  * MIT License
- * Fork by Marcel Capelan: multi-instance device_id fix + German (de) language support
  */
 
-const HS_VERSION = "0.5.2-de-fix";
+const HS_VERSION = "0.5.6";
 const HS_WORKOUT_SLOTS = Array.from({ length: 10 }, (_, index) => `workout_${index + 1}`);
 const HS_METRICS = [
   "last_sync", "steps", "active_calories", "heart_rate",
@@ -17,6 +17,15 @@ const HS_METRICS = [
   "last_workout_type", "last_workout_duration", "last_workout_distance",
   "last_workout_calories", "recent_workouts", ...HS_WORKOUT_SLOTS,
 ];
+
+// Metrics only available via the HealthSync integration (not in any HA Companion App variant).
+// These tiles are shown grayed-out when no matching entity is detected.
+const HS_HEALTHSYNC_EXCLUSIVE = new Set([
+  "sleep_onset", "sleep_wake",
+  "heart_rate_recovery", "afib_burden",
+  "body_mass_index", "waist_circumference",
+]);
+
 const HS_ENTITY_CANDIDATES = {
   last_sync: ["sensor.healthsync_last_sync"],
   steps: ["sensor.healthsync_steps_today"],
@@ -56,31 +65,31 @@ const HS_ENTITY_CANDIDATES = {
 };
 const HS_ENTITY_SUFFIXES = {
   last_sync: ["healthsync_last_sync", "last_sync"],
-  steps: ["healthsync_steps_today", "steps_today"],
-  active_calories: ["healthsync_active_calories_today", "active_calories_today"],
+  steps: ["healthsync_steps_today", "steps_today", "health_steps", "health_connect_daily_steps"],
+  active_calories: ["healthsync_active_calories_today", "active_calories_today", "active_energy", "health_connect_active_calories_burned"],
   heart_rate: ["healthsync_heart_rate", "heart_rate"],
   heart_rate_variability: ["healthsync_heart_rate_variability", "heart_rate_variability"],
-  sleep_duration: ["healthsync_sleep_last_night", "sleep_last_night"],
+  sleep_duration: ["healthsync_sleep_last_night", "sleep_last_night", "sleep_duration"],
   sleep_onset: ["healthsync_fell_asleep", "fell_asleep"],
   sleep_wake: ["healthsync_woke_up", "woke_up"],
-  flights_climbed: ["healthsync_flights_climbed_today", "flights_climbed_today"],
-  exercise_time: ["healthsync_exercise_time_today", "exercise_time_today"],
-  resting_energy: ["healthsync_resting_energy_today", "resting_energy_today"],
-  distance: ["healthsync_walking_running_distance_today", "walking_running_distance_today", "distance_walking_running_today"],
+  flights_climbed: ["healthsync_flights_climbed_today", "flights_climbed_today", "flights_climbed", "health_connect_daily_floors"],
+  exercise_time: ["healthsync_exercise_time_today", "exercise_time_today", "exercise_time"],
+  resting_energy: ["healthsync_resting_energy_today", "resting_energy_today", "resting_energy", "health_connect_total_calories_burned"],
+  distance: ["healthsync_walking_running_distance_today", "walking_running_distance_today", "distance_walking_running_today", "walking_running_distance", "health_connect_daily_distance"],
   vo2_max: ["healthsync_vo2_max", "vo2_max"],
   weight: ["healthsync_weight", "weight"],
   resting_heart_rate: ["healthsync_resting_heart_rate", "resting_heart_rate"],
   blood_pressure_systolic: ["healthsync_blood_pressure_systolic", "blood_pressure_systolic"],
   blood_pressure_diastolic: ["healthsync_blood_pressure_diastolic", "blood_pressure_diastolic"],
-  walking_heart_rate: ["healthsync_walking_heart_rate", "walking_heart_rate"],
+  walking_heart_rate: ["healthsync_walking_heart_rate", "walking_heart_rate", "walking_heart_rate_average"],
   heart_rate_recovery: ["healthsync_heart_rate_recovery", "heart_rate_recovery"],
   afib_burden: ["healthsync_afib_burden", "afib_burden"],
-  blood_oxygen: ["healthsync_blood_oxygen", "blood_oxygen"],
+  blood_oxygen: ["healthsync_blood_oxygen", "blood_oxygen", "health_connect_oxygen_saturation"],
   respiratory_rate: ["healthsync_respiratory_rate", "respiratory_rate"],
   body_temperature: ["healthsync_body_temperature", "body_temperature"],
   blood_glucose: ["healthsync_blood_glucose", "blood_glucose"],
   body_mass_index: ["healthsync_body_mass_index", "body_mass_index"],
-  body_fat_percentage: ["healthsync_body_fat_percentage", "body_fat_percentage"],
+  body_fat_percentage: ["healthsync_body_fat_percentage", "body_fat_percentage", "health_connect_body_fat"],
   lean_body_mass: ["healthsync_lean_body_mass", "lean_body_mass"],
   height: ["healthsync_height", "height"],
   waist_circumference: ["healthsync_waist_circumference", "waist_circumference"],
@@ -128,8 +137,9 @@ const HS_TILE_DEFINITIONS = [
 
 const HS_TRANSLATIONS = {
   en: {
-    title: "HealthSync", synced: "Synced", noData: "No HealthSync sensors found",
-    noDataHint: "Sync the HealthSync app once, or select entities in the card configuration.",
+    title: "HealthSync", synced: "Synced", noData: "No health sensors found",
+    noDataHint: "Enable health sensors in the HA Companion App settings, or select entities in the card configuration.",
+    requiresHealthSync: "Requires HealthSync",
     activity: "Activity · 7 days", sleep: "Sleep stages · 7 days", heart: "Heart rate · 24 hours",
     steps: "Steps", calories: "Active calories", sleepDuration: "Sleep",
     flightsClimbed: "Flights climbed", exerciseTime: "Exercise time", restingEnergy: "Resting energy",
@@ -150,8 +160,9 @@ const HS_TRANSLATIONS = {
     historyUnavailable: "History is unavailable. Current values will keep working.", source: "HealthSync", received: "Received", recorded: "Recorded hour", exactRecorded: "Recorded",
   },
   de: {
-    title: "HealthSync", synced: "Synchronisiert", noData: "Keine HealthSync-Sensoren gefunden",
-    noDataHint: "Synchronisiere die HealthSync-App einmal oder wähle Entitäten in der Konfiguration.",
+    title: "HealthSync", synced: "Synchronisiert", noData: "Keine Gesundheitssensoren gefunden",
+    noDataHint: "Aktiviere Gesundheitssensoren in der HA Companion-App oder wähle Entitäten in der Konfiguration.",
+    requiresHealthSync: "Erfordert HealthSync",
     activity: "Aktivität · 7 Tage", sleep: "Schlafphasen · 7 Tage", heart: "Herzfrequenz · 24 Stunden",
     steps: "Schritte", calories: "Aktive Kalorien", sleepDuration: "Schlaf",
     flightsClimbed: "Treppen", exerciseTime: "Trainingszeit", restingEnergy: "Ruheenergie",
@@ -182,8 +193,9 @@ const HS_TRANSLATIONS = {
     respiratoryRate: "Частота дыхания", bodyTemperature: "Температура тела", bloodGlucose: "Глюкоза крови",
     bodyMassIndex: "Индекс массы тела", bodyFatPercentage: "Жировая масса", leanBodyMass: "Безжировая масса",
     height: "Рост", waistCircumference: "Обхват талии",
-    title: "HealthSync", synced: "Синхронизация", noData: "Сенсоры HealthSync не найдены",
-    noDataHint: "Выполните первую синхронизацию в приложении HealthSync или выберите сущности в настройках карточки.",
+    title: "HealthSync", synced: "Синхронизация", noData: "Датчики здоровья не найдены",
+    noDataHint: "Включите датчики здоровья в настройках HA Companion App или выберите сущности в конфигурации карточки.",
+    requiresHealthSync: "Требует HealthSync",
     activity: "Активность · 7 дней", sleep: "Фазы сна · 7 дней", heart: "Пульс · 24 часа",
     steps: "Шаги", calories: "Активные калории", sleepDuration: "Сон",
     deep: "Глубокий", core: "Основной", rem: "REM", awake: "Бодрствование", unspecified: "Не определено",
@@ -360,6 +372,10 @@ class HealthSyncDashboardCard extends HTMLElement {
       show_vo2_max_metric: true,
       show_weight_metric: true,
       ...Object.fromEntries(HS_EXTRA_TILES.map(([, option]) => [option, true])),
+      show_heart_rate_recovery_metric: true,
+      show_afib_burden_metric: true,
+      show_body_mass_index_metric: true,
+      show_waist_circumference_metric: true,
       step_goal: 10000,
       calorie_goal: 600,
       tile_order: [],
@@ -414,6 +430,8 @@ class HealthSyncDashboardCard extends HTMLElement {
       show_resting_energy_metric: true, show_distance_metric: true,
       show_vo2_max_metric: true, show_weight_metric: true,
       ...Object.fromEntries(HS_EXTRA_TILES.map(([, option]) => [option, true])),
+      show_heart_rate_recovery_metric: true, show_afib_burden_metric: true,
+      show_body_mass_index_metric: true, show_waist_circumference_metric: true,
       tile_order: [],
       entities: {},
     };
@@ -609,7 +627,16 @@ class HealthSyncDashboardCard extends HTMLElement {
 
   _metric(metric, label, icon, tone) {
     const entity = this._entity(metric);
-    if (!entity) return "";
+    if (!entity) {
+      if (HS_HEALTHSYNC_EXCLUSIVE.has(metric)) {
+        const hint = this._t("requiresHealthSync");
+        return `<div class="metric ${tone} metric-disabled" title="${this._escape(hint)}" aria-label="${this._escape(label)} – ${this._escape(hint)}">
+          <span class="metric-icon"><ha-icon icon="${icon}"></ha-icon></span>
+          <span class="metric-copy"><span class="metric-value">—</span><span class="metric-label">${this._escape(label)}<br><span class="metric-hs-badge">HealthSync</span></span></span>
+        </div>`;
+      }
+      return "";
+    }
     return `<button class="metric ${tone}" data-entity="${this._escape(entity)}" aria-label="${this._escape(label)}">
       <span class="metric-icon"><ha-icon icon="${icon}"></ha-icon></span>
       <span class="metric-copy"><span class="metric-value">${this._format(metric)}</span><span class="metric-label">${this._escape(label)}</span></span>
@@ -635,6 +662,10 @@ class HealthSyncDashboardCard extends HTMLElement {
       .metric { appearance:none; border:1px solid var(--divider-color); border-radius:13px; min-height:70px; padding:10px; background:color-mix(in srgb,var(--card-background-color) 94%,var(--hb-color)); color:var(--primary-text-color); display:flex; align-items:center; gap:9px; text-align:left; cursor:pointer; font:inherit; transition:transform .15s ease,border-color .15s ease; }
       .metric:hover { transform:translateY(-1px); border-color:color-mix(in srgb,var(--hb-color) 50%,var(--divider-color)); }
       .metric:focus-visible { outline:2px solid var(--primary-color); outline-offset:2px; }
+      .metric.metric-disabled { opacity:0.45; cursor:default; pointer-events:none; filter:grayscale(0.4); }
+      .metric.metric-disabled:hover { transform:none; border-color:var(--divider-color); }
+      .metric-hs-badge { display:inline-block; margin-top:3px; padding:1px 4px; border-radius:4px; background:color-mix(in srgb,var(--secondary-text-color) 15%,transparent); color:var(--secondary-text-color); font-size:9px; font-weight:600; letter-spacing:.02em; line-height:1.4; white-space:nowrap; }
+      .tab.tab-disabled { opacity:0.45; cursor:default; pointer-events:none; }
       .metric-icon { width:32px; height:32px; flex:0 0 32px; display:grid; place-items:center; border-radius:10px; color:var(--hb-color); background:color-mix(in srgb,var(--hb-color) 14%,transparent); }
       .metric-copy { min-width:0; display:flex; flex-direction:column; }
       .metric-value { font-size:17px; line-height:1.15; font-weight:700; white-space:nowrap; }
@@ -733,6 +764,7 @@ class HealthSyncDashboardCard extends HTMLElement {
     }
     const hasWorkoutData = ["last_workout_type", "last_workout_duration", "last_workout_distance", "last_workout_calories", "recent_workouts", ...HS_WORKOUT_SLOTS].some((metric) => this._state(metric));
     const showWorkoutTab = this.config.show_workouts_tab && hasWorkoutData;
+    const showWorkoutTabDisabled = this.config.show_workouts_tab && !hasWorkoutData;
     if (!showWorkoutTab && this._activeTab === "workouts") this._activeTab = "overview";
     const sync = this._state("last_sync")?.state;
     const stepValue = this._numeric("steps") || 0;
@@ -750,9 +782,9 @@ class HealthSyncDashboardCard extends HTMLElement {
       hasSleepChart ? this._sleepChart() : "",
       hasHeartChart ? this._heartChart() : "",
     ].filter(Boolean).join("");
-    const tabs = showWorkoutTab ? `<div class="tabs" role="tablist" aria-label="${this._escape(this._t("title"))}">
+    const tabs = (showWorkoutTab || showWorkoutTabDisabled) ? `<div class="tabs" role="tablist" aria-label="${this._escape(this._t("title"))}">
       <button type="button" class="tab" role="tab" data-tab="overview" aria-selected="${this._activeTab === "overview"}">${this._t("overviewTab")}</button>
-      <button type="button" class="tab" role="tab" data-tab="workouts" aria-selected="${this._activeTab === "workouts"}">${this._t("workoutsTab")}</button>
+      <button type="button" class="tab${showWorkoutTabDisabled ? " tab-disabled" : ""}" role="tab" data-tab="workouts" aria-selected="${this._activeTab === "workouts"}" title="${showWorkoutTabDisabled ? this._escape(this._t("requiresHealthSync")) : ""}">${this._t("workoutsTab")}</button>
     </div>` : "";
     const overview = `<div class="tab-panel" role="tabpanel" data-tab-panel="overview"${this._activeTab === "overview" ? "" : " hidden"}>
       <div class="metrics">${cards}</div>
@@ -766,7 +798,7 @@ class HealthSyncDashboardCard extends HTMLElement {
       </div><div class="user-chip">${this._t("source")}</div></div>
       ${tabs}
       ${overview}
-      ${showWorkoutTab ? this._workoutsContent(this._activeTab !== "workouts") : ""}
+      ${showWorkoutTab ? this._workoutsContent(this._activeTab !== "workouts") : (showWorkoutTabDisabled ? `<div class="tab-panel" role="tabpanel" data-tab-panel="workouts" hidden></div>` : "")}
     </ha-card>`;
     this.shadowRoot.querySelectorAll("[data-entity]").forEach((element) => {
       element.addEventListener("click", () => this._moreInfo(element.dataset.entity));
