@@ -277,6 +277,7 @@ class HealthSyncDashboardCard extends HTMLElement {
       title: undefined,
       language: undefined,
       mobile_device: undefined,
+      device_id: undefined,
       days: 7,
       show_activity: true,
       show_sleep: true,
@@ -373,6 +374,7 @@ class HealthSyncDashboardCard extends HTMLElement {
       schema: [
         { name: "title", selector: { text: {} } },
         { name: "mobile_device", selector: { device: { integration: "mobile_app" } } },
+        { name: "device_id", selector: { text: {} } },
         {
           name: "language", default: "auto",
           selector: { select: { mode: "dropdown", options: [
@@ -448,12 +450,13 @@ class HealthSyncDashboardCard extends HTMLElement {
     const cacheIsFresh = detectedIds.length
       && Date.now() - this._entityDiscoveryAt < 60000
       && detectedIds.every((entityId) => states[entityId])
-      && this._entityDiscoveryDevice === (this.config?.mobile_device || "");
+      && this._entityDiscoveryDevice === (this.config?.mobile_device || this.config?.device_id || "");
     if (cacheIsFresh) return;
-    this._entityDiscoveryDevice = this.config?.mobile_device || "";
+    const selectedDevice = this.config?.mobile_device || this.config?.device_id || "";
+    this._entityDiscoveryDevice = selectedDevice;
     let allowedEntityIds;
-    const deviceId = this.config?.mobile_device;
-    if (deviceId && this._hass?.entities) {
+    const deviceId = selectedDevice;
+    if (this.config?.mobile_device && this._hass?.entities) {
       allowedEntityIds = new Set(
         Object.entries(this._hass.entities)
           .filter(([, entry]) => entry.device_id === deviceId)
@@ -462,6 +465,23 @@ class HealthSyncDashboardCard extends HTMLElement {
     }
     this._detectedEntities = HealthSyncDashboardCard.discoverEntities(this._hass, allowedEntityIds);
     this._entityDiscoveryAt = Date.now();
+    if (deviceId && !allowedEntityIds && typeof this._hass?.callWS === "function" && !this._entityRegistryRequest) {
+      const hassAtRequest = this._hass;
+      this._entityRegistryRequest = hassAtRequest.callWS({ type: "config/entity_registry/list" })
+        .then((entries) => {
+          if (this._hass !== hassAtRequest || this._entityDiscoveryDevice !== deviceId) return;
+          const matching = new Set((Array.isArray(entries) ? entries : [])
+            .filter((entry) => entry?.device_id === deviceId)
+            .map((entry) => entry.entity_id)
+            .filter(Boolean));
+          this._detectedEntities = HealthSyncDashboardCard.discoverEntities(this._hass, matching);
+          this._entityDiscoveryAt = Date.now();
+          this._renderSignature = "";
+          this._render();
+        })
+        .catch(() => {})
+        .finally(() => { this._entityRegistryRequest = null; });
+    }
   }
 
   _state(metric) {

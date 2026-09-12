@@ -303,6 +303,33 @@ autoDeviceCard._hass = {
 autoDeviceCard._refreshDetectedEntities();
 assert.equal(await autoDeviceCard._healthSyncDeviceId(), "auto-healthsync-device");
 
+// Legacy HealthSync `device_id` configs must isolate cards via the entity registry.
+const isolatedStates = {
+  "sensor.healthsync_steps_alice": { state: "10", attributes: {} },
+  "sensor.healthsync_steps_bob": { state: "20", attributes: {} },
+};
+const registryEntries = [
+  { entity_id: "sensor.healthsync_steps_alice", device_id: "alice-device" },
+  { entity_id: "sensor.healthsync_steps_bob", device_id: "bob-device" },
+];
+const isolatedHass = {
+  language: "de", states: isolatedStates,
+  callWS: async (request) => {
+    assert.equal(request.type, "config/entity_registry/list");
+    return registryEntries;
+  },
+};
+const aliceCard = new Card();
+aliceCard.setConfig({ language: "de", device_id: "alice-device" });
+aliceCard.hass = isolatedHass;
+const bobCard = new Card();
+bobCard.setConfig({ language: "de", device_id: "bob-device" });
+bobCard.hass = isolatedHass;
+await new Promise((resolve) => setTimeout(resolve, 0));
+assert.equal(aliceCard._entity("steps"), "sensor.healthsync_steps_alice");
+assert.equal(bobCard._entity("steps"), "sensor.healthsync_steps_bob");
+assert.equal(aliceCard._t("activity"), "Aktivität · 7 Tage");
+
 card.setConfig({
   language: "en", days: 3,
   show_steps_metric: false,
