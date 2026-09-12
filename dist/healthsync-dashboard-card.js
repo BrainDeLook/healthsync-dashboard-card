@@ -1,9 +1,9 @@
-/* HealthSync Dashboard Card v0.6.1
+/* HealthSync Dashboard Card v0.6.2-beta.1
  * A dependency-free Lovelace card for the HA Companion App (Apple Health / Health Connect).
  * MIT License
  */
 
-const HS_VERSION = "0.6.1";
+const HS_VERSION = "0.6.2-beta.1";
 const HS_METRICS = [
   "steps", "active_calories", "heart_rate",
   "heart_rate_variability", "sleep_duration",
