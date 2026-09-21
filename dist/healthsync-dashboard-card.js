@@ -1,9 +1,9 @@
-/* HealthSync Dashboard Card v0.6.2-beta.1
+/* HealthSync Dashboard Card v0.6.2
  * A dependency-free Lovelace card for the HA Companion App (Apple Health / Health Connect).
  * MIT License
  */
 
-const HS_VERSION = "0.6.2-beta.1";
+const HS_VERSION = "0.6.2";
 const HS_METRICS = [
   "steps", "active_calories", "heart_rate",
   "heart_rate_variability", "sleep_duration",
@@ -707,8 +707,17 @@ class HealthSyncDashboardCard extends HTMLElement {
   _historyPoints(metric) {
     const entity = this._entity(metric);
     const statistics = metric === "heart_rate" && entity ? this._statistics[entity] || [] : [];
-    const points = statistics.length ? [...statistics] : entity ? [...(this._history[entity] || [])] : [];
-    if (metric === "heart_rate") points.push(...this._liveHeartHistory);
+    const rawHistory = entity ? this._history[entity] || [] : [];
+    let points;
+    if (metric === "heart_rate") {
+      const allRaw = [...rawHistory, ...this._liveHeartHistory];
+      // Hourly means should fill genuine gaps, not create spikes beside real readings.
+      const HALF = 30 * 60 * 1000;
+      const fillStats = statistics.filter((stat) => !allRaw.some((raw) => Math.abs(raw.t - stat.t) <= HALF));
+      points = [...fillStats, ...allRaw];
+    } else {
+      points = statistics.length ? [...statistics] : [...rawHistory];
+    }
     const state = this._state(metric);
     const currentValue = Number(state?.state);
     const rawTime=state?.last_reported||state?.last_updated||state?.last_changed;
@@ -839,14 +848,30 @@ class HealthSyncDashboardCard extends HTMLElement {
     const tracePoints=hasHistory?measured:[{x:left,y:currentY},{x:left+plotW,y:currentY}];
     const trace=this._heartTracePath(tracePoints);
     const firstMeasured=measured[0],lastMeasured=measured[measured.length-1];
-    const gaps=hasHistory ? `<path class="heart-gap" d="M ${left},${firstMeasured.y} L ${firstMeasured.x},${firstMeasured.y} M ${lastMeasured.x},${lastMeasured.y} L ${left+plotW},${lastMeasured.y}" fill="none" stroke="var(--hb-red)" stroke-width="2" stroke-dasharray="4 7" opacity=".28"/>` : "";
+    const GAP_MS = 30 * 60 * 1000;
+    const segments = [], gapBridges = [];
+    let segment = [measured[0]];
+    for (let index = 1; index < points.length; index += 1) {
+      if (points[index].t - points[index - 1].t > GAP_MS) {
+        segments.push(segment);
+        gapBridges.push({ a: segment[segment.length - 1], b: measured[index] });
+        segment = [measured[index]];
+      } else {
+        segment.push(measured[index]);
+      }
+    }
+    segments.push(segment);
+    const tracePaths = segments.map((segmentPoints) => this._heartTracePath(segmentPoints)).filter(Boolean);
+    const gapBridgePath = gapBridges.map(({ a, b }) => `M ${a.x},${a.y} L ${b.x},${b.y}`).join(" ");
+    const gaps=hasHistory ? `<path class="heart-gap" d="M ${left},${firstMeasured.y} L ${firstMeasured.x},${firstMeasured.y} M ${lastMeasured.x},${lastMeasured.y} L ${left+plotW},${lastMeasured.y}${gapBridgePath ? ` ${gapBridgePath}` : ""}" fill="none" stroke="var(--hb-red)" stroke-width="2" stroke-dasharray="4 7" opacity=".28"/>` : "";
     const centerY=top+plotH/2;
     const historyMarkers=hasHistory?points.slice(0,-1).map((point,index)=>this._heartMarker(point,measured[index].x,measured[index].y,width)).join(""):"";
     const currentX=hasHistory?measured[measured.length-1].x:left+plotW;
     const currentMarker=`${this._heartMarker(current,currentX,currentY,width)}<text class="axis" x="${currentX-8}" y="${Math.max(top+10,currentY-9)}" text-anchor="end" style="fill:var(--hb-red)">${current.v.toFixed(0)} bpm</text>`;
     const legend = `<span class="legend"><span><i style="--dot:var(--hb-red)"></i>bpm</span></span>`;
     const timeLabels=[0,.25,.5,.75,1].map((ratio)=>{const date=new Date(start+(end-start)*ratio);const label=new Intl.DateTimeFormat(this._lang(),{hour:"2-digit",minute:"2-digit"}).format(date);return `<text class="axis" x="${left+plotW*ratio}" y="${height-6}" text-anchor="${ratio===0?"start":ratio===1?"end":"middle"}">${this._escape(label)}</text>`;}).join("");
-    const svg = `<svg viewBox="0 0 ${width} ${height}" role="img" data-current-only="${!hasHistory}" data-interpolation="linear" data-statistics="${Boolean(this._statistics[this._entity("heart_rate")]?.length)}">${this._grid(width,height,left,right,top,bottom,max,min)}<line class="heart-center" x1="${left}" x2="${left+plotW}" y1="${centerY}" y2="${centerY}" stroke="var(--secondary-text-color)" stroke-width="1.5" stroke-dasharray="5 7" opacity=".5"/>${gaps}<path class="heart-trace" d="${trace}" fill="none" stroke="var(--hb-red)" stroke-width="3"${hasHistory?"":` stroke-dasharray="10 7"`} stroke-linejoin="round" stroke-linecap="round"/>${historyMarkers}${currentMarker}${timeLabels}</svg>`;
+    const solidTrace = hasHistory ? tracePaths.join(" ") : trace;
+    const svg = `<svg viewBox="0 0 ${width} ${height}" role="img" data-current-only="${!hasHistory}" data-interpolation="linear" data-statistics="${Boolean(this._statistics[this._entity("heart_rate")]?.length)}">${this._grid(width,height,left,right,top,bottom,max,min)}<line class="heart-center" x1="${left}" x2="${left+plotW}" y1="${centerY}" y2="${centerY}" stroke="var(--secondary-text-color)" stroke-width="1.5" stroke-dasharray="5 7" opacity=".5"/>${gaps}<path class="heart-trace" d="${solidTrace}" fill="none" stroke="var(--hb-red)" stroke-width="3"${hasHistory?"":` stroke-dasharray="10 7"`} stroke-linejoin="round" stroke-linecap="round"/>${historyMarkers}${currentMarker}${timeLabels}</svg>`;
     return this._collapsibleChart("heart", this._t("heart"), legend, svg, true);
   }
 
