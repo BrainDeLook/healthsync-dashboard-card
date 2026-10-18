@@ -43,15 +43,13 @@
 Полный набор возможностей рассчитан на HealthSync `0.20.2`. Старые сущности,
 включая удалённый в `0.11.0` сенсор `Recent workouts`, остаются совместимыми.
 
-## Установка через HACS как пользовательский репозиторий
+## Установка через HACS
 
-[![Открыть репозиторий в Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=BrainDeLook&repository=healthsync-dashboard-card&category=plugin)
+[![Открыть HealthSync Dashboard Card в HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=BrainDeLook&repository=healthsync-dashboard-card&category=plugin)
 
 1. Откройте **HACS**.
-2. В меню с тремя точками выберите **Пользовательские репозитории**.
-3. Добавьте `https://github.com/BrainDeLook/healthsync-dashboard-card`.
-4. Выберите категорию **Dashboard**.
-5. Установите **HealthSync Dashboard Card** и обновите страницу браузера.
+2. Найдите **HealthSync Dashboard Card** в стандартном каталоге HACS.
+3. Установите карточку и обновите страницу браузера.
 
 ## Добавление карточки
 

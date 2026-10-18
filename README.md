@@ -42,15 +42,13 @@ integration's native sensors and Recorder history without external frontend depe
 The complete feature set targets HealthSync `0.20.2`. Older entities remain supported,
 including the legacy `Recent workouts` sensor used before HealthSync `0.11.0`.
 
-## Install with HACS as a custom repository
+## Install with HACS
 
-[![Open your Home Assistant instance and add this repository to HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=BrainDeLook&repository=healthsync-dashboard-card&category=plugin)
+[![Open HealthSync Dashboard Card in HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=BrainDeLook&repository=healthsync-dashboard-card&category=plugin)
 
 1. Open **HACS** in Home Assistant.
-2. Open the three-dot menu and choose **Custom repositories**.
-3. Add `https://github.com/BrainDeLook/healthsync-dashboard-card`.
-4. Select **Dashboard** as the category.
-5. Download **HealthSync Dashboard Card** and refresh the browser.
+2. Search for **HealthSync Dashboard Card** in the default HACS catalog.
+3. Download the card and refresh the browser.
 
 ## Add the card
 
