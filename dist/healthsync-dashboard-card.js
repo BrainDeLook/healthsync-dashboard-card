@@ -1,9 +1,9 @@
-/* HealthSync Dashboard Card v0.6.3
+/* HealthSync Dashboard Card v0.7.0-beta.1
  * A dependency-free Lovelace card for mannotfood/healthsync.
  * MIT License
  */
 
-const HS_VERSION = "0.6.3";
+const HS_VERSION = "0.7.0-beta.1";
 const HS_WORKOUT_SLOTS = Array.from({ length: 10 }, (_, index) => `workout_${index + 1}`);
 const HS_METRICS = [
   "last_sync", "steps", "active_calories", "heart_rate",
@@ -15,6 +15,8 @@ const HS_METRICS = [
   "body_fat_percentage", "lean_body_mass", "height", "waist_circumference",
   "last_workout_type", "last_workout_duration", "last_workout_distance",
   "last_workout_calories", "recent_workouts", ...HS_WORKOUT_SLOTS,
+  "stand_hours", "water", "in_bed", "sleep_deep", "sleep_core", "sleep_rem", "sleep_awake",
+  "move_goal", "exercise_goal", "stand_goal",
 ];
 const HS_ENTITY_CANDIDATES = {
   last_sync: ["sensor.healthsync_last_sync"],
@@ -51,35 +53,37 @@ const HS_ENTITY_CANDIDATES = {
   last_workout_distance: ["sensor.healthsync_last_workout_distance", "sensor.healthsync_workouts_last_workout_distance"],
   last_workout_calories: ["sensor.healthsync_last_workout_calories", "sensor.healthsync_workouts_last_workout_calories"],
   recent_workouts: ["sensor.healthsync_recent_workouts", "sensor.healthsync_workouts_recent_workouts"],
+  stand_hours: [], water: [], in_bed: [], sleep_deep: [], sleep_core: [], sleep_rem: [], sleep_awake: [],
+  move_goal: [], exercise_goal: [], stand_goal: [],
   ...Object.fromEntries(HS_WORKOUT_SLOTS.map((metric) => [metric, []])),
 };
 const HS_ENTITY_SUFFIXES = {
   last_sync: ["healthsync_last_sync", "last_sync"],
-  steps: ["healthsync_steps_today", "steps_today"],
-  active_calories: ["healthsync_active_calories_today", "active_calories_today"],
+  steps: ["healthsync_steps_today", "steps_today", "health_steps", "health_connect_daily_steps"],
+  active_calories: ["healthsync_active_calories_today", "active_calories_today", "active_energy", "health_connect_active_calories_burned"],
   heart_rate: ["healthsync_heart_rate", "heart_rate"],
   heart_rate_variability: ["healthsync_heart_rate_variability", "heart_rate_variability"],
-  sleep_duration: ["healthsync_sleep_last_night", "sleep_last_night"],
+  sleep_duration: ["healthsync_sleep_last_night", "sleep_last_night", "sleep_duration"],
   sleep_onset: ["healthsync_fell_asleep", "fell_asleep"],
   sleep_wake: ["healthsync_woke_up", "woke_up"],
-  flights_climbed: ["healthsync_flights_climbed_today", "flights_climbed_today"],
-  exercise_time: ["healthsync_exercise_time_today", "exercise_time_today"],
-  resting_energy: ["healthsync_resting_energy_today", "resting_energy_today"],
-  distance: ["healthsync_walking_running_distance_today", "walking_running_distance_today", "distance_walking_running_today"],
+  flights_climbed: ["healthsync_flights_climbed_today", "flights_climbed_today", "flights_climbed", "health_connect_daily_floors", "floors_ascended"],
+  exercise_time: ["healthsync_exercise_time_today", "exercise_time_today", "exercise_time"],
+  resting_energy: ["healthsync_resting_energy_today", "resting_energy_today", "resting_energy", "health_connect_total_calories_burned"],
+  distance: ["healthsync_walking_running_distance_today", "walking_running_distance_today", "distance_walking_running_today", "walking_running_distance", "health_connect_daily_distance"],
   vo2_max: ["healthsync_vo2_max", "vo2_max"],
   weight: ["healthsync_weight", "weight"],
   resting_heart_rate: ["healthsync_resting_heart_rate", "resting_heart_rate"],
   blood_pressure_systolic: ["healthsync_blood_pressure_systolic", "blood_pressure_systolic"],
   blood_pressure_diastolic: ["healthsync_blood_pressure_diastolic", "blood_pressure_diastolic"],
-  walking_heart_rate: ["healthsync_walking_heart_rate", "walking_heart_rate"],
+  walking_heart_rate: ["healthsync_walking_heart_rate", "walking_heart_rate", "walking_heart_rate_average"],
   heart_rate_recovery: ["healthsync_heart_rate_recovery", "heart_rate_recovery"],
   afib_burden: ["healthsync_afib_burden", "afib_burden"],
-  blood_oxygen: ["healthsync_blood_oxygen", "blood_oxygen"],
+  blood_oxygen: ["healthsync_blood_oxygen", "blood_oxygen", "health_connect_oxygen_saturation"],
   respiratory_rate: ["healthsync_respiratory_rate", "respiratory_rate"],
   body_temperature: ["healthsync_body_temperature", "body_temperature"],
   blood_glucose: ["healthsync_blood_glucose", "blood_glucose"],
   body_mass_index: ["healthsync_body_mass_index", "body_mass_index"],
-  body_fat_percentage: ["healthsync_body_fat_percentage", "body_fat_percentage"],
+  body_fat_percentage: ["healthsync_body_fat_percentage", "body_fat_percentage", "health_connect_body_fat"],
   lean_body_mass: ["healthsync_lean_body_mass", "lean_body_mass"],
   height: ["healthsync_height", "height"],
   waist_circumference: ["healthsync_waist_circumference", "waist_circumference"],
@@ -88,8 +92,15 @@ const HS_ENTITY_SUFFIXES = {
   last_workout_distance: ["healthsync_last_workout_distance", "healthsync_workouts_last_workout_distance", "last_workout_distance"],
   last_workout_calories: ["healthsync_last_workout_calories", "healthsync_workouts_last_workout_calories", "last_workout_calories"],
   recent_workouts: ["healthsync_recent_workouts", "healthsync_workouts_recent_workouts", "recent_workouts"],
+  stand_hours: ["stand_hours"], water: ["water", "health_connect_hydration"], in_bed: ["in_bed"],
+  sleep_deep: ["deep_sleep"], sleep_core: ["core_sleep"], sleep_rem: ["rem_sleep"], sleep_awake: ["awake"],
+  move_goal: ["move_goal"], exercise_goal: ["exercise_goal"], stand_goal: ["stand_goal"],
   ...Object.fromEntries(HS_WORKOUT_SLOTS.map((metric) => [metric, []])),
 };
+
+const HS_ENTITY_UNITS = { water: ["ml", "l", "fl. oz", "fl oz", "floz"], in_bed: ["min", "h"], sleep_awake: ["min", "h"] };
+const HS_TILE_GOALS = { active_calories: "move_goal", exercise_time: "exercise_goal", stand_hours: "stand_goal" };
+const HS_SLEEP_STAGE_METRICS = { deep_minutes: "sleep_deep", core_minutes: "sleep_core", rem_minutes: "sleep_rem", awake_minutes: "sleep_awake" };
 
 const HS_EXTRA_TILES = [
   ["resting_heart_rate", "show_resting_heart_rate_metric", "restingHeartRate", "mdi:heart-outline", "red"],
@@ -107,6 +118,9 @@ const HS_EXTRA_TILES = [
   ["lean_body_mass", "show_lean_body_mass_metric", "leanBodyMass", "mdi:scale-bathroom", "indigo"],
   ["height", "show_height_metric", "height", "mdi:human-male-height", "green"],
   ["waist_circumference", "show_waist_circumference_metric", "waistCircumference", "mdi:tape-measure", "green"],
+  ["stand_hours", "show_stand_hours_metric", "standHours", "mdi:human-handsup", "green"],
+  ["water", "show_water_metric", "water", "mdi:cup-water", "cyan"],
+  ["in_bed", "show_in_bed_metric", "inBed", "mdi:bed", "indigo"],
 ];
 const HS_TILE_DEFINITIONS = [
   ["steps", "show_steps_metric", "steps", "mdi:walk", "blue"],
@@ -139,6 +153,7 @@ const HS_TRANSLATIONS = {
     respiratoryRate: "Respiratory rate", bodyTemperature: "Body temperature", bloodGlucose: "Blood glucose",
     bodyMassIndex: "Body mass index", bodyFatPercentage: "Body fat", leanBodyMass: "Lean body mass",
     height: "Height", waistCircumference: "Waist circumference",
+    standHours: "Stand hours", water: "Water", inBed: "In bed",
     deep: "Deep", core: "Core", rem: "REM", awake: "Awake", unspecified: "Unspecified",
     heartRate: "Heart rate", hrv: "HRV", fellAsleep: "Fell asleep", wokeUp: "Woke up", today: "Today",
     switchChart: "Switch chart",
@@ -158,6 +173,7 @@ const HS_TRANSLATIONS = {
     respiratoryRate: "Частота дыхания", bodyTemperature: "Температура тела", bloodGlucose: "Глюкоза крови",
     bodyMassIndex: "Индекс массы тела", bodyFatPercentage: "Жировая масса", leanBodyMass: "Безжировая масса",
     height: "Рост", waistCircumference: "Обхват талии",
+    standHours: "Часы с разминкой", water: "Вода", inBed: "В постели",
     title: "HealthSync", synced: "Синхронизация", noData: "Сенсоры HealthSync не найдены",
     noDataHint: "Выполните первую синхронизацию в приложении HealthSync или выберите сущности в настройках карточки.",
     activity: "Активность · 7 дней", sleep: "Фазы сна · 7 дней", heart: "Пульс · 24 часа",
@@ -194,6 +210,7 @@ const HS_EDITOR_LABELS = {
     show_body_mass_index_metric: "Body mass index", show_body_fat_percentage_metric: "Body fat percentage",
     show_lean_body_mass_metric: "Lean body mass", show_height_metric: "Height",
     show_waist_circumference_metric: "Waist circumference",
+    show_stand_hours_metric: "Stand hours", show_water_metric: "Water", show_in_bed_metric: "In bed",
     last_sync: "Last synchronization", steps: "Steps", active_calories: "Active calories",
     sleep_duration: "Sleep last night", sleep_onset: "Fell asleep", sleep_wake: "Woke up",
     heart_rate: "Heart rate", heart_rate_variability: "Heart-rate variability",
@@ -209,6 +226,9 @@ const HS_EDITOR_LABELS = {
     last_workout_type: "Last workout type", last_workout_duration: "Last workout duration",
     last_workout_distance: "Last workout distance", last_workout_calories: "Last workout calories",
     recent_workouts: "Recent workouts",
+    stand_hours: "Stand hours today", water: "Water today", in_bed: "In bed last night",
+    sleep_deep: "Deep sleep", sleep_core: "Core sleep", sleep_rem: "REM sleep", sleep_awake: "Awake",
+    move_goal: "Move goal", exercise_goal: "Exercise goal", stand_goal: "Stand goal",
   },
   ru: {
     device_id: "Устройство HealthSync для точной истории",
@@ -223,6 +243,7 @@ const HS_EDITOR_LABELS = {
     show_body_mass_index_metric: "Индекс массы тела", show_body_fat_percentage_metric: "Процент жира",
     show_lean_body_mass_metric: "Безжировая масса", show_height_metric: "Рост",
     show_waist_circumference_metric: "Обхват талии",
+    show_stand_hours_metric: "Часы с разминкой", show_water_metric: "Вода", show_in_bed_metric: "В постели",
     flights_climbed: "Этажи за сегодня", exercise_time: "Упражнения за сегодня",
     resting_energy: "Энергия покоя за сегодня", distance: "Дистанция ходьбы и бега",
     vo2_max: "VO₂ max", weight: "Вес",
@@ -246,6 +267,9 @@ const HS_EDITOR_LABELS = {
     last_workout_type: "Тип последней тренировки", last_workout_duration: "Длительность последней тренировки",
     last_workout_distance: "Дистанция последней тренировки", last_workout_calories: "Калории последней тренировки",
     recent_workouts: "Недавние тренировки",
+    stand_hours: "Часы с разминкой за сегодня", water: "Вода за сегодня", in_bed: "В постели прошлой ночью",
+    sleep_deep: "Глубокий сон", sleep_core: "Основной сон", sleep_rem: "REM-сон", sleep_awake: "Бодрствование",
+    move_goal: "Цель подвижности", exercise_goal: "Цель упражнений", stand_goal: "Цель разминки",
   },
 };
 
@@ -266,6 +290,8 @@ class HealthSyncDashboardCard extends HTMLElement {
     this._liveHeartHistory = [];
     this._detectedEntities = {};
     this._entityDiscoveryAt = 0;
+    this._entityDiscoveryDevice = "";
+    this._entityRegistryRequest = null;
     this._historyTimer = null;
     this._historyIdle = false;
     this._historyScheduledKey = "";
@@ -280,6 +306,7 @@ class HealthSyncDashboardCard extends HTMLElement {
       title: undefined,
       language: undefined,
       device_id: undefined,
+      mobile_device: undefined,
       days: 7,
       show_activity: true,
       show_sleep: true,
@@ -312,6 +339,9 @@ class HealthSyncDashboardCard extends HTMLElement {
       this._resolvedDeviceId = undefined;
       this._exactHeartHistory = [];
     }
+    this._detectedEntities = {};
+    this._entityDiscoveryAt = 0;
+    if (this._hass) this._refreshDetectedEntities();
     this._historyKey = "";
     this._renderSignature = this._relevantStateSignature();
     this._render();
@@ -337,6 +367,7 @@ class HealthSyncDashboardCard extends HTMLElement {
     return {
       title: "HealthSync", language: "auto", days: 7,
       device_id: undefined,
+      mobile_device: undefined,
       step_goal: 10000, calorie_goal: 600,
       show_activity: true, show_sleep: true, show_heart_rate: true,
       show_workouts_tab: true,
@@ -356,24 +387,49 @@ class HealthSyncDashboardCard extends HTMLElement {
     return document.createElement("healthsync-dashboard-card-editor");
   }
 
-  static discoverEntities(hass) {
+  static deviceFamily(hass, deviceId) {
+    const family = new Set([deviceId]);
+    const devices = Object.values(hass?.devices || {});
+    let grew = true;
+    while (grew) {
+      grew = false;
+      for (const device of devices) {
+        if (device?.id && family.has(device.via_device_id) && !family.has(device.id)) {
+          family.add(device.id);
+          grew = true;
+        }
+      }
+    }
+    return family;
+  }
+
+  static discoverEntities(hass, allowedEntityIds) {
     const states = hass?.states || {};
     const stateEntries = Object.entries(states);
     const sensorIds = stateEntries
       .map(([entityId]) => entityId)
-      .filter((entityId) => entityId.startsWith("sensor."));
+      .filter((entityId) => entityId.startsWith("sensor.") && (!allowedEntityIds || allowedEntityIds.has(entityId)));
     const entities = {};
     for (const metric of HS_METRICS) {
-      const exact = HS_ENTITY_CANDIDATES[metric].find((entityId) => states[entityId]);
-      if (exact) { entities[metric] = exact; continue; }
+      const exact = HS_ENTITY_CANDIDATES[metric].find((entityId) => states[entityId] && (!allowedEntityIds || allowedEntityIds.has(entityId)));
+      if (exact && !["unknown", "unavailable"].includes(states[exact].state)) { entities[metric] = exact; continue; }
       const suffixes = HS_ENTITY_SUFFIXES[metric];
-      const match = sensorIds.find((entityId) => suffixes.some((suffix) => entityId.slice(7) === suffix || entityId.endsWith(`_${suffix}`)));
+      const otherSuffixes = HS_METRICS.filter((other) => other !== metric).flatMap((other) => HS_ENTITY_SUFFIXES[other]);
+      const matches = (objectId) => suffixes.some((suffix) => (objectId === suffix || objectId.endsWith(`_${suffix}`))
+        && !otherSuffixes.some((longer) => longer.length > suffix.length && longer.endsWith(`_${suffix}`)
+          && (objectId === longer || objectId.endsWith(`_${longer}`))));
+      const units = HS_ENTITY_UNITS[metric];
+      const unitOk = (entityId) => !units || units.includes(String(states[entityId].attributes?.unit_of_measurement || "").toLowerCase());
+      const plain = sensorIds.filter((entityId) => unitOk(entityId) && matches(entityId.slice(7)));
+      const suffixed = sensorIds.filter((entityId) => unitOk(entityId) && /_\d+$/.test(entityId) && matches(entityId.slice(7).replace(/_\d+$/, "")));
+      const live = (entityId) => !["unknown", "unavailable"].includes(states[entityId].state);
+      const match = plain.find(live) || suffixed.find(live) || exact || plain[0] || suffixed[0];
       if (match) entities[metric] = match;
     }
     const assigned = new Set(Object.values(entities));
     const workoutSlots = stateEntries
       .filter(([entityId, state]) => {
-        if (!entityId.startsWith("sensor.") || assigned.has(entityId)) return false;
+        if (!entityId.startsWith("sensor.") || assigned.has(entityId) || (allowedEntityIds && !allowedEntityIds.has(entityId))) return false;
         const attributes = state?.attributes || {};
         return Boolean(attributes.started_at || attributes.ended_at)
           && ("duration_min" in attributes || "distance_m" in attributes || "calories" in attributes);
@@ -399,6 +455,7 @@ class HealthSyncDashboardCard extends HTMLElement {
     return {
       schema: [
         { name: "title", selector: { text: {} } },
+        { name: "mobile_device", selector: { device: { integration: "mobile_app" } } },
         {
           name: "language", default: "auto",
           selector: { select: { mode: "dropdown", options: [
@@ -469,12 +526,42 @@ class HealthSyncDashboardCard extends HTMLElement {
       this._entityDiscoveryAt = 0;
       return;
     }
+    const selectedDevice = this.config?.mobile_device || "";
     const detectedIds = Object.values(this._detectedEntities);
     const cacheIsFresh = detectedIds.length
       && Date.now() - this._entityDiscoveryAt < 60000
-      && detectedIds.every((entityId) => states[entityId]);
+      && detectedIds.every((entityId) => states[entityId])
+      && this._entityDiscoveryDevice === selectedDevice;
     if (cacheIsFresh) return;
-    this._detectedEntities = HealthSyncDashboardCard.discoverEntities(this._hass);
+    this._entityDiscoveryDevice = selectedDevice;
+    let allowedEntityIds;
+    if (selectedDevice) {
+      allowedEntityIds = new Set();
+      if (this._hass.entities) {
+        const devices = HealthSyncDashboardCard.deviceFamily(this._hass, selectedDevice);
+        for (const [entityId, entry] of Object.entries(this._hass.entities)) {
+          if (devices.has(entry.device_id)) allowedEntityIds.add(entityId);
+        }
+      } else if (typeof this._hass.callWS === "function" && !this._entityRegistryRequest) {
+        const hassAtRequest = this._hass;
+        this._entityRegistryRequest = hassAtRequest.callWS({ type: "config/entity_registry/list" })
+          .then((entries) => {
+            if (this._entityDiscoveryDevice !== selectedDevice) return;
+            const devices = HealthSyncDashboardCard.deviceFamily(this._hass, selectedDevice);
+            const ids = new Set(entries.filter((entry) => devices.has(entry.device_id)).map((entry) => entry.entity_id));
+            this._detectedEntities = HealthSyncDashboardCard.discoverEntities(this._hass, ids);
+            this._renderSignature = "";
+            this._render();
+            this._scheduleHistory();
+          })
+          .catch((error) => console.warn("HealthSync Dashboard Card: device entity lookup failed", error))
+          .finally(() => {
+            this._entityRegistryRequest = null;
+            if (this._entityDiscoveryDevice !== selectedDevice) this._refreshDetectedEntities();
+          });
+      }
+    }
+    this._detectedEntities = HealthSyncDashboardCard.discoverEntities(this._hass, allowedEntityIds);
     this._entityDiscoveryAt = Date.now();
   }
 
@@ -540,9 +627,19 @@ class HealthSyncDashboardCard extends HTMLElement {
   _metric(metric, label, icon, tone) {
     const entity = this._entity(metric);
     if (!entity) return "";
+    let value = this._format(metric);
+    const goalMetric = HS_TILE_GOALS[metric];
+    if (goalMetric && this._numeric(metric) !== null) {
+      const goal = this._numeric(goalMetric);
+      if (goal !== null && goal > 0) {
+        const suffix = ` / ${new Intl.NumberFormat(this._lang(), { maximumFractionDigits: 0 }).format(goal)}`;
+        const unitAt = value.indexOf(" <small>");
+        value = unitAt < 0 ? `${value}${suffix}` : `${value.slice(0, unitAt)}${suffix}${value.slice(unitAt)}`;
+      }
+    }
     return `<button class="metric ${tone}" data-entity="${this._escape(entity)}" aria-label="${this._escape(label)}">
       <span class="metric-icon"><ha-icon icon="${icon}"></ha-icon></span>
-      <span class="metric-copy"><span class="metric-value">${this._format(metric)}</span><span class="metric-label">${this._escape(label)}</span></span>
+      <span class="metric-copy"><span class="metric-value">${value}</span><span class="metric-label">${this._escape(label)}</span></span>
     </button>`;
   }
 
@@ -672,7 +769,7 @@ class HealthSyncDashboardCard extends HTMLElement {
       .map(([metric, option, label, icon, tone]) => this.config[option] ? this._metric(metric, this._t(label), icon, tone) : "")
       .filter(Boolean).join("");
     const hasActivityChart = this.config.show_activity && (this._entity("steps") || this._entity("active_calories"));
-    const hasSleepChart = this.config.show_sleep && this._entity("sleep_duration");
+    const hasSleepChart = this.config.show_sleep && (this._entity("sleep_duration") || Object.values(HS_SLEEP_STAGE_METRICS).some((metric) => this._entity(metric)));
     const hasHeartChart = this.config.show_heart_rate && this._entity("heart_rate");
     this._prepareChartState(Boolean(hasActivityChart), Boolean(hasSleepChart), Boolean(hasHeartChart));
     const charts = [
@@ -804,7 +901,7 @@ class HealthSyncDashboardCard extends HTMLElement {
   _toggleChart(chart) {
     const available = [
       this.config.show_activity && (this._entity("steps") || this._entity("active_calories")) ? "activity" : "",
-      this.config.show_sleep && this._entity("sleep_duration") ? "sleep" : "",
+      this.config.show_sleep && (this._entity("sleep_duration") || Object.values(HS_SLEEP_STAGE_METRICS).some((metric) => this._entity(metric))) ? "sleep" : "",
       this.config.show_heart_rate && this._entity("heart_rate") ? "heart" : "",
     ].filter(Boolean);
     if (!available.includes(chart) || !available.length) return;
@@ -841,8 +938,15 @@ class HealthSyncDashboardCard extends HTMLElement {
     const entity = this._entity(metric);
     const statistics = metric === "heart_rate" && entity ? this._statistics[entity] || [] : [];
     const exact = metric === "heart_rate" ? this._exactHeartHistory : [];
-    const points = exact.length ? [...exact] : statistics.length ? [...statistics] : entity ? [...(this._history[entity] || [])] : [];
-    if (metric === "heart_rate") points.push(...this._liveHeartHistory);
+    const raw = entity ? this._history[entity] || [] : [];
+    let points;
+    if (metric === "heart_rate" && !exact.length) {
+      const readings = [...raw, ...this._liveHeartHistory];
+      const halfHour = 30 * 60 * 1000;
+      points = [...statistics.filter((stat) => !readings.some((reading) => Math.abs(reading.t - stat.t) <= halfHour)), ...readings];
+    } else {
+      points = exact.length ? [...exact, ...this._liveHeartHistory] : [...raw];
+    }
     const state = this._state(metric);
     const currentValue = Number(state?.state);
     const rawTime=state?.last_reported||state?.last_updated||state?.last_changed;
@@ -911,6 +1015,20 @@ class HealthSyncDashboardCard extends HTMLElement {
       const item = index.get(key);
       if (item) { item.value = minutes / 60; item.t = point.t; item.has = true; }
     }
+    const stageMetric = HS_SLEEP_STAGE_METRICS[attribute];
+    if (stageMetric && this._entity(stageMetric)) {
+      const hours = this._state(stageMetric)?.attributes?.unit_of_measurement === "h";
+      for (const point of this._historyPoints(stageMetric)) {
+        const date = new Date(point.t);
+        const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+        const item = index.get(key);
+        if (item && !item.has && Number.isFinite(point.v)) {
+          item.value = hours ? point.v : point.v / 60;
+          item.t = point.t;
+          item.has = true;
+        }
+      }
+    }
     return result;
   }
 
@@ -965,23 +1083,17 @@ class HealthSyncDashboardCard extends HTMLElement {
     const current=points[points.length-1],currentY=top+plotH-(current.v-min)/(max-min)*plotH;
     const hasHistory=points.length>1;
     const measured=points.map((point)=>({x:Math.max(left,Math.min(left+plotW,left+(point.t-start)/(end-start)*plotW)),y:top+plotH-(point.v-min)/(max-min)*plotH}));
-    const tracePoints=hasHistory?measured:[{x:left,y:currentY},{x:left+plotW,y:currentY}];
-    const trace=this._heartTracePath(tracePoints);
     const firstMeasured=measured[0],lastMeasured=measured[measured.length-1];
-    const gaps=hasHistory ? `<path class="heart-gap" d="M ${left},${firstMeasured.y} L ${firstMeasured.x},${firstMeasured.y} M ${lastMeasured.x},${lastMeasured.y} L ${left+plotW},${lastMeasured.y}" fill="none" stroke="var(--hb-red)" stroke-width="2" stroke-dasharray="4 7" opacity=".28"/>` : "";
-    const centerY=top+plotH/2;
+    const trace=hasHistory
+      ? `M ${left},${firstMeasured.y} ${measured.map((point)=>`L ${point.x},${point.y}`).join(" ")} L ${left+plotW},${lastMeasured.y}`
+      : `M ${left},${currentY} L ${left+plotW},${currentY}`;
     const historyMarkers=hasHistory?points.slice(0,-1).map((point,index)=>this._heartMarker(point,measured[index].x,measured[index].y,width)).join(""):"";
     const currentX=hasHistory?measured[measured.length-1].x:left+plotW;
     const currentMarker=`${this._heartMarker(current,currentX,currentY,width)}<text class="axis" x="${currentX-8}" y="${Math.max(top+10,currentY-9)}" text-anchor="end" style="fill:var(--hb-red)">${current.v.toFixed(0)} bpm</text>`;
     const legend = `<span class="legend"><span><i style="--dot:var(--hb-red)"></i>bpm</span></span>`;
     const timeLabels=[0,.25,.5,.75,1].map((ratio)=>{const date=new Date(start+(end-start)*ratio);const label=new Intl.DateTimeFormat(this._lang(),{hour:"2-digit",minute:"2-digit"}).format(date);return `<text class="axis" x="${left+plotW*ratio}" y="${height-6}" text-anchor="${ratio===0?"start":ratio===1?"end":"middle"}">${this._escape(label)}</text>`;}).join("");
-    const svg = `<svg viewBox="0 0 ${width} ${height}" role="img" data-current-only="${!hasHistory}" data-interpolation="linear" data-exact-history="${Boolean(this._exactHeartHistory.length)}" data-statistics="${Boolean(this._statistics[this._entity("heart_rate")]?.length)}">${this._grid(width,height,left,right,top,bottom,max,min)}<line class="heart-center" x1="${left}" x2="${left+plotW}" y1="${centerY}" y2="${centerY}" stroke="var(--secondary-text-color)" stroke-width="1.5" stroke-dasharray="5 7" opacity=".5"/>${gaps}<path class="heart-trace" d="${trace}" fill="none" stroke="var(--hb-red)" stroke-width="3"${hasHistory?"":` stroke-dasharray="10 7"`} stroke-linejoin="round" stroke-linecap="round"/>${historyMarkers}${currentMarker}${timeLabels}</svg>`;
+    const svg = `<svg viewBox="0 0 ${width} ${height}" role="img" data-current-only="${!hasHistory}" data-interpolation="linear" data-exact-history="${Boolean(this._exactHeartHistory.length)}" data-statistics="${Boolean(this._statistics[this._entity("heart_rate")]?.length)}">${this._grid(width,height,left,right,top,bottom,max,min)}<path class="heart-trace" d="${trace}" fill="none" stroke="var(--hb-red)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>${historyMarkers}${currentMarker}${timeLabels}</svg>`;
     return this._collapsibleChart("heart", this._t("heart"), legend, svg, true);
-  }
-
-  _heartTracePath(points) {
-    if (!points.length) return "";
-    return points.map((point,index)=>`${index?"L":"M"} ${point.x},${point.y}`).join(" ");
   }
 
   _isValidHeartRate(value) {
@@ -1025,7 +1137,7 @@ class HealthSyncDashboardCard extends HTMLElement {
 
   _scheduleHistory() {
     if (!this._hass || !this.config || this._loadingHistory) return;
-    const metrics=["steps","active_calories","sleep_duration","heart_rate"];
+    const metrics=["steps","active_calories","sleep_duration","heart_rate",...Object.values(HS_SLEEP_STAGE_METRICS)];
     const entities=[...new Set(metrics.map((m)=>this._entity(m)).filter(Boolean))];
     if (!entities.length) return;
     const key=`${entities.join(",")}|${this.config.days}|${this.config.device_id||"auto"}`;

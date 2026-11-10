@@ -127,6 +127,8 @@ assert.deepEqual(entityPanel.schema.map((field) => field.name), [
   "body_fat_percentage", "lean_body_mass", "height", "waist_circumference",
   "last_workout_type", "last_workout_duration", "last_workout_distance",
   "last_workout_calories", "recent_workouts", "workout_1", "workout_2", "workout_3", "workout_4", "workout_5", "workout_6", "workout_7", "workout_8", "workout_9", "workout_10",
+  "stand_hours", "water", "in_bed", "sleep_deep", "sleep_core", "sleep_rem", "sleep_awake",
+  "move_goal", "exercise_goal", "stand_goal",
 ]);
 const tilePanel = form.schema.find((field) => field.icon === "mdi:view-grid-outline");
 assert.equal(tilePanel, undefined, "draggable metric switches must not be duplicated in ha-form");
@@ -268,7 +270,7 @@ assert.equal(statisticsRequest.type, "recorder/statistics_during_period");
 assert.deepEqual(statisticsRequest.types, ["mean", "min", "max"]);
 card._render();
 assert.match(card.shadowRoot.innerHTML, /data-statistics="true"/);
-assert.match(card.shadowRoot.innerHTML, /class="heart-gap"/);
+assert.doesNotMatch(card.shadowRoot.innerHTML, /class="heart-gap"/);
 
 let exactServiceRequest;
 card.config.device_id = "healthsync-device-1";
@@ -373,5 +375,77 @@ assert.equal(discoveryCalls, 1, "entity discovery should be cached across ordina
 assert.ok(fastCard._relevantStateSignature().length < 3000, "render signature must not serialize large entity attributes");
 fastCard.disconnectedCallback();
 Card.discoverEntities = originalDiscoverEntities;
+
+const companionStates = {
+  "sensor.alice_heart_rate_2": { state: "82", attributes: { unit_of_measurement: "bpm" } },
+  "sensor.alice_resting_heart_rate_2": { state: "55", attributes: { unit_of_measurement: "bpm" } },
+  "sensor.alice_floors_ascended": { state: "unavailable", attributes: {} },
+  "sensor.alice_floors_ascended_2": { state: "6", attributes: {} },
+  "sensor.alice_water_2": { state: "750", attributes: { unit_of_measurement: "ml" } },
+  "sensor.boiler_water": { state: "65", attributes: { unit_of_measurement: "°C" } },
+  "sensor.alice_active_energy": { state: "159", attributes: { unit_of_measurement: "kcal" } },
+  "sensor.alice_move_goal": { state: "300", attributes: { unit_of_measurement: "kcal" } },
+  "sensor.alice_deep_sleep": { state: "90", attributes: { unit_of_measurement: "min" }, last_updated: new Date().toISOString() },
+  "sensor.bob_heart_rate_2": { state: "97", attributes: { unit_of_measurement: "bpm" } },
+};
+const companionDetected = Card.discoverEntities({ states: companionStates });
+assert.equal(companionDetected.heart_rate, "sensor.alice_heart_rate_2");
+assert.equal(companionDetected.resting_heart_rate, "sensor.alice_resting_heart_rate_2");
+assert.equal(companionDetected.flights_climbed, "sensor.alice_floors_ascended_2");
+assert.equal(companionDetected.water, "sensor.alice_water_2");
+
+const companionHass = {
+  language: "en", states: companionStates,
+  devices: { phone: { id: "alice-phone" }, watch: { id: "alice-watch", via_device_id: "alice-phone" }, bob: { id: "bob-phone" } },
+  entities: {
+    "sensor.alice_heart_rate_2": { device_id: "alice-watch" },
+    "sensor.alice_resting_heart_rate_2": { device_id: "alice-watch" },
+    "sensor.alice_floors_ascended_2": { device_id: "alice-watch" },
+    "sensor.alice_water_2": { device_id: "alice-phone" },
+    "sensor.alice_active_energy": { device_id: "alice-phone" },
+    "sensor.alice_move_goal": { device_id: "alice-phone" },
+    "sensor.alice_deep_sleep": { device_id: "alice-watch" },
+    "sensor.bob_heart_rate_2": { device_id: "bob-phone" },
+  },
+  callApi: async () => [], callWS: async () => ({}),
+};
+const alice = new Card();
+alice.setConfig({ language: "en", mobile_device: "alice-phone" });
+alice.hass = companionHass;
+const bob = new Card();
+bob.setConfig({ language: "en", mobile_device: "bob-phone" });
+bob.hass = companionHass;
+assert.equal(alice._entity("heart_rate"), "sensor.alice_heart_rate_2", "paired watch sensors belong to the selected phone");
+assert.equal(bob._entity("heart_rate"), "sensor.bob_heart_rate_2", "separate cards must not mix devices");
+assert.match(alice.shadowRoot.innerHTML, /159 \/ 300 <small>kcal<\/small>/);
+assert.match(alice.shadowRoot.innerHTML, /data-chart="sleep"/, "separate sleep stages should show a chart without a sleep-duration sensor");
+assert.equal(alice._dailySleepStage("deep_minutes").at(-1).value, 1.5);
+const heartEntity = alice._entity("heart_rate");
+const heartNow = Date.now();
+alice._history[heartEntity] = [{ t: heartNow - 120000, v: 84, a: {} }];
+alice._statistics[heartEntity] = [
+  { t: heartNow - 180000, v: 60, a: { statistics: true } },
+  { t: heartNow - 7200000, v: 70, a: { statistics: true } },
+];
+const mergedHeart = alice._historyPoints("heart_rate");
+assert.ok(mergedHeart.some((point) => point.v === 84));
+assert.ok(mergedHeart.some((point) => point.v === 70), "statistics fill long gaps");
+assert.ok(!mergedHeart.some((point) => point.v === 60), "statistics near raw readings must not create spikes");
+alice.disconnectedCallback();
+bob.disconnectedCallback();
+
+const registryCard = new Card();
+registryCard.setConfig({ mobile_device: "alice-watch" });
+registryCard.hass = {
+  language: "en", states: companionStates,
+  callWS: async (request) => {
+    assert.equal(request.type, "config/entity_registry/list");
+    return [{ entity_id: "sensor.alice_heart_rate_2", device_id: "alice-watch" }];
+  },
+  callApi: async () => [],
+};
+await new Promise((resolve) => setTimeout(resolve, 0));
+assert.equal(registryCard._entity("heart_rate"), "sensor.alice_heart_rate_2", "mobile_device uses the entity registry when hass.entities is absent");
+registryCard.disconnectedCallback();
 
 console.log("Smoke test passed");

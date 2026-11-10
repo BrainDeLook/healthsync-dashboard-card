@@ -12,7 +12,8 @@ integration's native sensors and Recorder history without external frontend depe
 
 ## Features
 
-- Automatic discovery of standard HealthSync entities
+- Automatic discovery of HealthSync and HA Companion App health sensors, including entity IDs ending in `_2` after re-registration
+- Optional `mobile_device` selection to isolate Companion App sensors by phone, including linked watch sensors; `device_id` continues to select the HealthSync device for exact heart-rate history
 - Native Home Assistant graphical card editor with manual entity overrides
 - Fast first paint: entity discovery is cached and Recorder history loads after the card is visible
 - Independent visibility switches for every metric tile
@@ -21,11 +22,13 @@ integration's native sensors and Recorder history without external frontend depe
 - HealthSync 0.20 vitals: resting/walking/recovery heart rate, blood pressure, AFib burden, SpO₂, respiratory rate, temperature and blood glucose
 - HealthSync 0.20 body metrics: BMI, body fat, lean body mass, height and waist circumference
 - HealthSync 0.12+ tiles for flights climbed, exercise time, walking/running distance, VO₂ max and weight
+- Optional stand hours, water and in-bed tiles when matching Companion App sensors are available
+- Move, exercise and stand goals displayed alongside their matching values when goal sensors are available
 - Fell-asleep and wake-up times
 - Step-goal progress bar
 - Independent step and calorie scales in the activity chart
-- Point-to-point 24-hour heart-rate chart using exact `healthsync.get_readings` samples, with hourly statistics and Recorder fallbacks
-- Sleep-stage chart built from `deep_minutes`, `core_minutes`, `rem_minutes` and `awake_minutes`
+- Continuous 24-hour heart-rate chart using exact `healthsync.get_readings` samples when available; otherwise Recorder readings with hourly statistics filling gaps
+- Sleep-stage chart built from `deep_minutes`, `core_minutes`, `rem_minutes` and `awake_minutes`, with separate Companion App stage sensors as a fallback
 - Separate Workouts tab for the latest workout and the recent workout log
 - Automatic discovery of the individually named workout entities and per-activity icons from HealthSync `0.11.0`–`0.20.2`
 - Compact scrollable recent-workout list instead of expanding the whole card
@@ -39,8 +42,9 @@ integration's native sensors and Recorder history without external frontend depe
 - [mannotfood/healthsync](https://github.com/mannotfood/healthsync), synced at least once
 - HACS for the recommended installation method
 
-The complete feature set targets HealthSync `0.20.2`. Older entities remain supported,
+The complete HealthSync feature set targets HealthSync `0.20.2`. Older entities remain supported,
 including the legacy `Recent workouts` sensor used before HealthSync `0.11.0`.
+Companion App sensors can supplement HealthSync data; some optional tiles and goals require those sensors.
 
 ## Install with HACS
 
@@ -68,7 +72,8 @@ Common options:
 type: custom:healthsync-dashboard-card
 title: HealthSync
 language: auto
-device_id: 0123456789abcdef0123456789abcdef # optional; enables exact readings history
+device_id: 0123456789abcdef0123456789abcdef # optional HealthSync device for exact heart-rate history
+# mobile_device: 0123456789abcdef0123456789abcdef # optional Companion App phone; includes linked watch sensors
 days: 7
 step_goal: 10000
 calorie_goal: 600
@@ -106,6 +111,9 @@ show_body_fat_percentage_metric: true
 show_lean_body_mass_metric: true
 show_height_metric: true
 show_waist_circumference_metric: true
+show_stand_hours_metric: true
+show_water_metric: true
+show_in_bed_metric: true
 
 # Optional custom order; omitted metrics follow in their default order
 tile_order:
