@@ -1,9 +1,9 @@
-/* HealthSync Dashboard Card v0.7.0-beta.1
+/* HealthSync Dashboard Card v0.7.0
  * A dependency-free Lovelace card for mannotfood/healthsync.
  * MIT License
  */
 
-const HS_VERSION = "0.7.0-beta.1";
+const HS_VERSION = "0.7.0";
 const HS_WORKOUT_SLOTS = Array.from({ length: 10 }, (_, index) => `workout_${index + 1}`);
 const HS_METRICS = [
   "last_sync", "steps", "active_calories", "heart_rate",
